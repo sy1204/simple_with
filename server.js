@@ -82,7 +82,13 @@ const server = http.createServer(async (req, res) => {
 
     // 정적 파일 서빙
     let filePath = pathname === '/' ? '/index.html' : pathname;
-    filePath = path.join(__dirname, filePath);
+
+    // public 폴더 확인 우선
+    let fullPath = path.join(__dirname, 'public', filePath);
+    if (!fs.existsSync(fullPath)) {
+        fullPath = path.join(__dirname, filePath);
+    }
+    filePath = fullPath;
 
     // 보안: 상위 디렉토리 접근 방지
     if (!filePath.startsWith(__dirname)) {
