@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>워크데스크 - 직장인 올인원 대시보드</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#136dec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101822",
+                        "card-light": "#ffffff",
+                        "card-dark": "#1a2430",
+                        "anti-blue-bg": "#f5f0e8",
+                        "anti-blue-card": "#faf7f2",
+                    },
+                    fontFamily: {
+                        "display": ["Noto Sans KR", "Inter", "sans-serif"],
+                        "mono": ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "monospace"]
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+                        'soft-dark': '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.1)',
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .dark ::-webkit-scrollbar-thumb {
+            background: #334155;
+        }
+
+        .anti-blue {
+            --tw-bg-opacity: 1;
+            background-color: #f5f0e8;
+        }
+
+        .anti-blue .card {
+            background-color: #faf7f2;
+        }
+    </style>
+</head>
+
+<body
+    class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display transition-colors duration-200">
+    <div class="flex min-h-screen w-full flex-col overflow-hidden">
+        <main class="flex-1 flex flex-col h-screen overflow-hidden">
+            <!-- Header -->
+            <header
+                class="bg-white dark:bg-[#111822] border-b border-slate-200 dark:border-slate-800 shrink-0 z-20 fixed top-0 left-0 right-0 shadow-sm">
+                <div class="h-16 flex items-center justify-between px-6 lg:px-10">
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 mr-4">
+                            <div
+                                class="flex items-center justify-center size-8 rounded-lg bg-primary text-white shrink-0">
+                                <span class="material-symbols-outlined text-xl">dashboard</span>
+                            </div>
+                            <span class="text-lg font-bold tracking-tight hidden md:block">워크데스크</span>
+                        </div>
+                        <div class="hidden md:block h-6 w-px bg-slate-200 dark:bg-slate-700 mx-2"></div>
+                        <h2 class="text-base font-bold leading-tight">안녕하세요!</h2>
+                    </div>
+                    <div class="flex items-center gap-3 lg:gap-6">
+                        <div
+                            class="hidden lg:flex items-center gap-6 pr-6 border-r border-slate-200 dark:border-slate-700">
+                            <div class="text-right">
+                                <div class="flex items-center justify-end gap-2 text-sm font-bold">
+                                    <span class="text-xs font-medium text-slate-400">SEOUL</span>
+                                    <span id="clock-seoul" class="font-mono">--:--</span>
+                                </div>
+                                <div class="flex gap-3 text-[10px] text-slate-500 mt-0.5">
+                                    <span class="flex items-center gap-1">NY <span id="clock-ny"
+                                            class="font-mono">--:--</span></span>
+                                    <span class="w-px h-2 bg-slate-300 self-center"></span>
+                                    <span class="flex items-center gap-1">LON <span id="clock-lon"
+                                            class="font-mono">--:--</span></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="theme-toggle"
+                                class="flex items-center justify-center size-9 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-colors">
+                                <span class="material-symbols-outlined text-xl">dark_mode</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <nav class="border-t border-slate-100 dark:border-slate-800 px-6 lg:px-10 py-2 overflow-x-auto">
+                    <ul class="flex items-center gap-4 md:gap-6 flex-wrap md:flex-nowrap">
+                        <li><a class="flex items-center gap-1.5 text-xs font-semibold text-primary px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20"
+                                href="#"><span class="material-symbols-outlined text-[16px]">grid_view</span>전체보기</a>
+                        </li>
+                        <li><a class="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white py-1.5"
+                                href="#calendar"><span
+                                    class="material-symbols-outlined text-[16px] text-slate-400">calendar_month</span>캘린더</a>
+                        </li>
+                        <li><a class="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white py-1.5"
+                                href="#todo"><span
+                                    class="material-symbols-outlined text-[16px] text-slate-400">check_box</span>할일
+                                목록</a></li>
+                        <li><a class="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white py-1.5"
+                                href="#timer"><span
+                                    class="material-symbols-outlined text-[16px] text-slate-400">timer</span>타이머</a>
+                        </li>
+                        <li><a class="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white py-1.5"
+                                href="#calculator"><span
+                                    class="material-symbols-outlined text-[16px] text-slate-400">calculate</span>계산기</a>
+                        </li>
+                        <li><a class="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white py-1.5"
+                                href="#finance"><span
+                                    class="material-symbols-outlined text-[16px] text-slate-400">account_balance</span>금융</a>
+                        </li>
+                        <li><a class="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white py-1.5"
+                                href="#converter"><span
+                                    class="material-symbols-outlined text-[16px] text-slate-400">currency_exchange</span>단위
+                                변환</a></li>
+                        <li><a class="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white py-1.5"
+                                href="#memo"><span
+                                    class="material-symbols-outlined text-[16px] text-slate-400">edit_note</span>메모</a>
+                        </li>
+                    </ul>
+                </nav>
+            </header>
+
+            <!-- Main Content -->
+            <div class="flex-1 overflow-y-auto p-4 lg:p-8 pt-32 lg:pt-36 bg-background-light dark:bg-background-dark">
+                <div class="max-w-[1600px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 pb-10">
+
+                    <!-- Calendar Card -->
+                    <div id="calendar"
+                        class="card group relative col-span-1 lg:col-span-2 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-bold flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary">calendar_month</span>
+                                <span id="calendar-month-year"></span>
+                            </h3>
+                            <div class="flex gap-2">
+                                <button id="prev-month"
+                                    class="size-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"><span
+                                        class="material-symbols-outlined text-sm">chevron_left</span></button>
+                                <button id="next-month"
+                                    class="size-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"><span
+                                        class="material-symbols-outlined text-sm">chevron_right</span></button>
+                            </div>
+                        </div>
+                        <div class="flex-1 flex flex-col">
+                            <div class="grid grid-cols-7 mb-2">
+                                <span class="text-xs font-semibold text-center text-red-500">일</span>
+                                <span class="text-xs font-semibold text-center text-slate-500">월</span>
+                                <span class="text-xs font-semibold text-center text-slate-500">화</span>
+                                <span class="text-xs font-semibold text-center text-slate-500">수</span>
+                                <span class="text-xs font-semibold text-center text-slate-500">목</span>
+                                <span class="text-xs font-semibold text-center text-slate-500">금</span>
+                                <span class="text-xs font-semibold text-center text-slate-500">토</span>
+                            </div>
+                            <div id="calendar-grid" class="grid grid-cols-7 gap-1 flex-1"></div>
+                        </div>
+                        <div
+                            class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                            <div class="flex items-center gap-4 text-xs">
+                                <div class="flex items-center gap-1.5"><span
+                                        class="size-2 rounded-full bg-red-500"></span>공휴일</div>
+                                <div class="flex items-center gap-1.5"><span
+                                        class="size-2 rounded-full bg-green-500"></span>일정</div>
+                            </div>
+                            <div
+                                class="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 pl-3 pr-1 py-1 rounded-lg">
+                                <span class="text-xs font-medium text-slate-500">D-day:</span>
+                                <input id="dday-input" class="bg-transparent border-none text-xs w-24 p-0 focus:ring-0"
+                                    placeholder="YYYY.MM.DD" type="text" />
+                                <span id="dday-result" class="text-xs font-bold text-primary px-2">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Timer Card -->
+                    <div id="timer"
+                        class="card group relative col-span-1 lg:col-span-2 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 overflow-hidden">
+                        <div class="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
+                            <span class="material-symbols-outlined text-[120px]">timer</span>
+                        </div>
+                        <div class="relative z-10 flex flex-col h-full">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-lg font-bold flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-primary">timelapse</span>집중 타이머
+                                </h3>
+                                <div class="flex gap-2">
+                                    <button id="timer-pomodoro"
+                                        class="px-3 py-1 bg-primary text-white text-xs font-bold rounded-full">뽀모도로</button>
+                                    <button id="timer-break"
+                                        class="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-bold rounded-full">휴식</button>
+                                </div>
+                            </div>
+                            <div class="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12 flex-1">
+                                <div class="relative size-40 md:size-48">
+                                    <svg class="size-full -rotate-90 transform" viewBox="0 0 100 100">
+                                        <circle class="text-slate-100 dark:text-slate-800" cx="50" cy="50" fill="none"
+                                            r="45" stroke="currentColor" stroke-width="6"></circle>
+                                        <circle id="timer-progress" class="text-primary transition-all duration-1000"
+                                            cx="50" cy="50" fill="none" r="45" stroke="currentColor"
+                                            stroke-dasharray="283" stroke-dashoffset="0" stroke-linecap="round"
+                                            stroke-width="6"></circle>
+                                    </svg>
+                                    <div
+                                        class="absolute top-0 left-0 flex size-full flex-col items-center justify-center">
+                                        <span id="timer-display"
+                                            class="text-4xl md:text-5xl font-bold font-mono tracking-tighter">25:00</span>
+                                        <span id="timer-mode" class="text-sm text-slate-500 mt-1">집중 모드</span>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col gap-4 w-full md:w-auto">
+                                    <button id="timer-toggle"
+                                        class="w-full md:w-40 bg-primary hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 transition-all active:scale-95">
+                                        <span class="material-symbols-outlined">play_arrow</span><span>시작</span>
+                                    </button>
+                                    <button id="timer-reset"
+                                        class="w-full md:w-40 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 font-semibold py-3 px-6 rounded-lg transition-all active:scale-95">초기화</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Todo Card -->
+                    <div id="todo"
+                        class="card group relative col-span-1 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
+                        <h3 class="text-sm font-semibold text-slate-500 mb-4 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-lg">check_box</span>To-Do List
+                        </h3>
+                        <div id="todo-list" class="flex-1 overflow-y-auto pr-1 space-y-2 mb-4"></div>
+                        <div class="flex gap-2">
+                            <input id="todo-input"
+                                class="flex-1 bg-background-light dark:bg-[#111822] border-none rounded-lg text-sm px-3 py-2 focus:ring-1 focus:ring-primary"
+                                placeholder="새로운 할 일..." type="text" />
+                            <button id="todo-add" class="bg-primary hover:bg-blue-600 text-white p-2 rounded-lg"><span
+                                    class="material-symbols-outlined text-lg">add</span></button>
+                        </div>
+                    </div>
+
+                    <!-- Calculator Card -->
+                    <div id="calculator"
+                        class="card group relative col-span-1 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
+                        <h3 class="text-sm font-semibold text-slate-500 mb-4 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-lg">calculate</span>공학 계산기
+                        </h3>
+                        <div
+                            class="flex-1 bg-background-light dark:bg-[#111822] rounded-lg p-3 mb-3 text-right flex flex-col justify-end">
+                            <div id="calc-history" class="text-xs text-slate-400 mb-1 h-4 overflow-hidden"></div>
+                            <div id="calc-display" class="text-2xl font-mono font-bold">0</div>
+                        </div>
+                        <div id="calc-buttons" class="grid grid-cols-4 gap-2 h-full"></div>
+                    </div>
+
+                    <!-- Finance Card -->
+                    <div id="finance"
+                        class="card group relative col-span-1 lg:col-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col gap-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-bold flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary">savings</span>금융 계산기
+                            </h3>
+                            <div class="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+                                <button id="finance-interest"
+                                    class="px-3 py-1 text-xs font-bold bg-white dark:bg-card-dark rounded shadow-sm">이자
+                                    계산</button>
+                                <button id="finance-discount" class="px-3 py-1 text-xs font-medium text-slate-500">할인
+                                    계산</button>
+                            </div>
+                        </div>
+                        <div id="finance-content" class="flex flex-col md:flex-row gap-6"></div>
+                    </div>
+
+                    <!-- Unit Converter Card -->
+                    <div id="converter"
+                        class="card group relative col-span-1 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col gap-4">
+                        <h3 class="text-sm font-semibold text-slate-500 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-lg">currency_exchange</span>단위 변환
+                        </h3>
+                        <div class="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-2">
+                            <button data-type="currency"
+                                class="conv-type text-primary p-1 relative after:content-[''] after:absolute after:bottom-[-9px] after:left-0 after:w-full after:h-0.5 after:bg-primary"><span
+                                    class="material-symbols-outlined text-lg">payments</span></button>
+                            <button data-type="length" class="conv-type text-slate-400 hover:text-slate-600 p-1"><span
+                                    class="material-symbols-outlined text-lg">straighten</span></button>
+                            <button data-type="area" class="conv-type text-slate-400 hover:text-slate-600 p-1"><span
+                                    class="material-symbols-outlined text-lg">aspect_ratio</span></button>
+                            <button data-type="weight" class="conv-type text-slate-400 hover:text-slate-600 p-1"><span
+                                    class="material-symbols-outlined text-lg">scale</span></button>
+                        </div>
+                        <div id="converter-content" class="flex flex-col gap-3"></div>
+                    </div>
+
+                    <!-- Memo Card -->
+                    <div id="memo"
+                        class="card group relative col-span-1 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm font-semibold text-slate-700">빠른 메모</span>
+                        </div>
+                        <textarea id="memo-text"
+                            class="w-full flex-1 bg-transparent border-none text-sm text-slate-600 dark:text-slate-300 placeholder-slate-400 resize-none focus:ring-0 p-0 leading-relaxed min-h-[120px]"
+                            placeholder="메모를 입력하세요..."></textarea>
+                    </div>
+
+                    <!-- Progress Card -->
+                    <div
+                        class="group relative col-span-1 lg:col-span-2 xl:col-span-4 bg-gradient-to-r from-primary to-blue-600 rounded-lg shadow-soft p-6 text-white flex flex-col md:flex-row items-center justify-between">
+                        <div class="flex items-center gap-4 mb-4 md:mb-0 w-full md:w-auto">
+                            <div class="p-3 bg-white/10 rounded-full backdrop-blur-sm">
+                                <span class="material-symbols-outlined text-2xl">emoji_events</span>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold">이번 주 목표 달성률</h3>
+                                <p id="progress-text" class="text-blue-100 text-sm">할 일을 추가하고 완료해보세요!</p>
+                            </div>
+                        </div>
+                        <div class="w-full md:w-1/2 flex items-center gap-3">
+                            <span id="progress-percent" class="text-sm font-bold">0%</span>
+                            <div id="progress-bar" class="flex-1 flex gap-2"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
