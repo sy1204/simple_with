@@ -1214,56 +1214,100 @@
     const Converter = {
         type: Storage.get('convType', 'currency'),
         units: {
-            currency: { from: 'USD', to: 'KRW', rate: 1350, options: ['USD', 'EUR', 'KRW', 'JPY'], rates: { USD: 1, EUR: 0.92, KRW: 1350, JPY: 157 } },
-            length: { from: 'cm', to: 'inch', options: ['cm', 'inch', 'm', 'ft'], rates: { cm: 1, inch: 2.54, m: 0.01, ft: 0.0328 } },
-            area: { from: '㎡', to: '평', options: ['㎡', '평'], rates: { '㎡': 1, '평': 0.3025 } },
-            weight: { from: 'kg', to: 'lb', options: ['kg', 'lb', 'g', 'oz'], rates: { kg: 1, lb: 2.205, g: 1000, oz: 35.274 } }
+            currency: { from: 'USD', to: 'KRW', options: ['USD', 'EUR', 'KRW', 'JPY', 'CNY'], rates: { USD: 1, EUR: 0.92, KRW: 1350, JPY: 157, CNY: 7.2 } },
+            length: { from: 'cm', to: 'm', options: ['mm', 'cm', 'm', 'km', 'in', 'ft', 'yd', 'mi'], rates: { mm: 1000, cm: 100, m: 1, km: 0.001, in: 39.37, ft: 3.281, yd: 1.094, mi: 0.000621 } },
+            area: { from: '㎡', to: '평', options: ['㎡', '평', 'ft²', 'ac'], rates: { '㎡': 1, '평': 0.3025, 'ft²': 10.764, 'ac': 0.000247 } },
+            weight: { from: 'kg', to: 'g', options: ['mg', 'g', 'kg', 't', 'lb', 'oz'], rates: { mg: 1000000, g: 1000, kg: 1, t: 0.001, lb: 2.2046, oz: 35.274 } },
+            speed: { from: 'km/h', to: 'm/s', options: ['m/s', 'km/h', 'mph', 'knot', 'mach'], rates: { 'm/s': 1, 'km/h': 3.6, mph: 2.237, knot: 1.944, mach: 0.002939 } }
         },
         init() {
             this.render();
             document.querySelectorAll('.conv-type').forEach(btn => {
-                btn.addEventListener('click', () => { this.type = btn.dataset.type; Storage.set('convType', this.type); this.updateButtons(); this.render(); });
+                btn.addEventListener('click', () => {
+                    this.type = btn.dataset.type;
+                    Storage.set('convType', this.type);
+                    this.updateButtons();
+                    this.render();
+                });
             });
         },
         updateButtons() {
             document.querySelectorAll('.conv-type').forEach(btn => {
                 const isActive = btn.dataset.type === this.type;
-                btn.className = `conv-type ${isActive ? 'text-primary relative after:content-[\'\'] after:absolute after:bottom-[-9px] after:left-0 after:w-full after:h-0.5 after:bg-primary' : 'text-slate-400 hover:text-slate-600'} p-1`;
+                btn.className = `conv-type ${isActive ? 'text-primary relative after:content-[\'\'] after:absolute after:bottom-[-9px] after:left-0 after:w-full after:h-0.5 after:bg-primary' : 'text-slate-400 hover:text-slate-600'} p-1 transition-colors`;
             });
         },
         render() {
             const u = this.units[this.type];
             const container = document.getElementById('converter-content');
-            container.innerHTML = `
-                <div class="bg-background-light dark:bg-[#111822] p-2.5 rounded-lg border border-transparent focus-within:border-primary">
-                    <select id="conv-from" class="bg-transparent text-[11px] font-bold text-primary border-none p-0 focus:ring-0 cursor-pointer w-full mb-1">${u.options.map(o => `<option ${o === u.from ? 'selected' : ''}>${o}</option>`).join('')}</select>
-                    <input id="conv-input" class="w-full bg-transparent text-lg font-bold border-none p-0 focus:ring-0" type="text" value="1" />
-                </div>
-                <div class="flex justify-center -my-3 relative z-10"><button id="conv-swap" class="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-full p-1 text-slate-500 hover:text-primary shadow-sm"><span class="material-symbols-outlined text-base">swap_vert</span></button></div>
-                <div class="bg-background-light dark:bg-[#111822] p-2.5 rounded-lg">
-                    <select id="conv-to" class="bg-transparent text-[11px] font-bold text-primary border-none p-0 focus:ring-0 cursor-pointer w-full mb-1">${u.options.map(o => `<option ${o === u.to ? 'selected' : ''}>${o}</option>`).join('')}</select>
-                    <input id="conv-output" class="w-full bg-transparent text-lg font-bold border-none p-0 focus:ring-0" type="text" readonly />
+
+            const createUnitChips = (current, idPrefix) => {
+                return `<div class="flex flex-wrap gap-1.5 mb-2">
+                    ${u.options.map(o => `
+                        <button class="unit-chip px-2.5 py-1 text-[10px] font-medium rounded-full border transition-all ${o === current ? 'bg-primary text-white border-primary shadow-sm shadow-blue-100' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-primary/50'}" 
+                                data-unit="${o}" data-prefix="${idPrefix}">
+                            ${o}
+                        </button>
+                    `).join('')}
                 </div>`;
-            document.getElementById('conv-input').addEventListener('input', () => this.convert());
-            document.getElementById('conv-from').addEventListener('change', () => this.convert());
-            document.getElementById('conv-to').addEventListener('change', () => this.convert());
+            };
+
+            container.innerHTML = `
+                <div class="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800 transition-colors">
+                    <div class="text-[10px] text-slate-400 mb-2 font-medium">From</div>
+                    ${createUnitChips(u.from, 'from')}
+                    <input id="conv-input" class="w-full bg-transparent text-xl font-bold border-none p-0 focus:ring-0 text-slate-700 dark:text-slate-200 placeholder-slate-300" type="text" value="1" placeholder="값을 입력하세요" />
+                </div>
+                
+                <div class="flex justify-center -my-2.5 relative z-10">
+                    <button id="conv-swap" class="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-full p-2 text-slate-400 hover:text-primary shadow-md hover:shadow-lg transition-all active:scale-95">
+                        <span class="material-symbols-outlined text-base">swap_vert</span>
+                    </button>
+                </div>
+                
+                <div class="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800 transition-colors">
+                    <div class="text-[10px] text-slate-400 mb-2 font-medium">To</div>
+                    ${createUnitChips(u.to, 'to')}
+                    <input id="conv-output" class="w-full bg-transparent text-xl font-bold border-none p-0 focus:ring-0 text-primary" type="text" readonly />
+                </div>`;
+
+            // 단위 선택 이벤트
+            container.querySelectorAll('.unit-chip').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const prefix = btn.dataset.prefix;
+                    const unit = btn.dataset.unit;
+                    if (prefix === 'from') u.from = unit;
+                    else u.to = unit;
+                    this.render(); // 상태 변경 후 즉시 리렌더링 (가장 안전한 방식)
+                });
+            });
+
+            const input = document.getElementById('conv-input');
+            input.addEventListener('input', () => this.convert());
+            input.focus(); // 탭 전환 시 입력창 포커스 (편의성)
+
             document.getElementById('conv-swap').addEventListener('click', () => this.swap());
             this.convert();
         },
         convert() {
             const u = this.units[this.type];
-            const val = parseFloat(document.getElementById('conv-input').value) || 0;
-            const from = document.getElementById('conv-from').value;
-            const to = document.getElementById('conv-to').value;
-            const baseVal = val / u.rates[from];
-            const result = baseVal * u.rates[to];
-            document.getElementById('conv-output').value = result.toLocaleString(undefined, { maximumFractionDigits: 4 });
+            const valStr = document.getElementById('conv-input').value.replace(/,/g, '');
+            const val = parseFloat(valStr) || 0;
+            const from = u.from;
+            const to = u.to;
+
+            // 기준 단위(u.rates에서 값이 1인 단위 또는 정규화된 값)로 변환 후 대상 단위로 변환
+            // rates가 기준 단위 대비 비율이라면: result = val * (rates[to] / rates[from])
+            const result = val * (u.rates[to] / u.rates[from]);
+
+            // 결과 포맷팅
+            const displayResult = Number.isInteger(result) ? result : parseFloat(result.toFixed(4));
+            document.getElementById('conv-output').value = displayResult.toLocaleString(undefined, { maximumFractionDigits: 6 });
         },
         swap() {
-            const from = document.getElementById('conv-from');
-            const to = document.getElementById('conv-to');
-            [from.value, to.value] = [to.value, from.value];
-            this.convert();
+            const u = this.units[this.type];
+            [u.from, u.to] = [u.to, u.from];
+            this.render();
         }
     };
 
