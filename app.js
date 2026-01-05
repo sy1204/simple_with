@@ -40,20 +40,408 @@
         }
     };
 
-    // ===== 시계 =====
-    const Clock = {
+    // ===== 시간 위젯 (통합) =====
+    const TimeWidget = {
+        currentTab: Storage.get('timeTab', 'clock'),
+        clockType: Storage.get('clockType', 'digital'),
+        timezones: Storage.get('timezones', ['America/New_York', 'Europe/London']),
+        availableCities: [
+            { name: '뉴욕', tz: 'America/New_York', code: 'NY' },
+            { name: '런던', tz: 'Europe/London', code: 'LON' },
+            { name: '도쿄', tz: 'Asia/Tokyo', code: 'TYO' },
+            { name: '파리', tz: 'Europe/Paris', code: 'PAR' },
+            { name: '시드니', tz: 'Australia/Sydney', code: 'SYD' },
+            { name: '베이징', tz: 'Asia/Shanghai', code: 'BEJ' },
+            { name: '두바이', tz: 'Asia/Dubai', code: 'DXB' },
+            { name: '싱가포르', tz: 'Asia/Singapore', code: 'SIN' },
+            { name: '홍콩', tz: 'Asia/Hong_Kong', code: 'HKG' },
+            { name: 'LA', tz: 'America/Los_Angeles', code: 'LA' }
+        ],
+        // Timer state
+        timerDuration: Storage.get('timerDuration', 25 * 60),
+        timerRemaining: Storage.get('timerRemaining', 25 * 60),
+        timerRunning: false,
+        timerInterval: null,
+        timerAlertType: Storage.get('timerAlertType', 'both'), // 'popup', 'sound', 'both'
+        // Stopwatch state
+        stopwatchTime: 0,
+        stopwatchRunning: false,
+        stopwatchInterval: null,
+        stopwatchLaps: Storage.get('stopwatchLaps', []),
+        stopwatchType: Storage.get('stopwatchType', 'digital'),
+
         init() {
-            this.update();
-            setInterval(() => this.update(), 1000);
+            this.bindTabs();
+            this.render();
+            this.startHeaderClock();
         },
-        update() {
+
+        bindTabs() {
+            document.querySelectorAll('.time-tab').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    this.currentTab = btn.id.replace('tab-', '');
+                    Storage.set('timeTab', this.currentTab);
+                    this.updateTabButtons();
+                    this.render();
+                });
+            });
+        },
+
+        updateTabButtons() {
+            document.querySelectorAll('.time-tab').forEach(btn => {
+                const isActive = btn.id === `tab-${this.currentTab}`;
+                btn.className = `time-tab px-3 py-1 text-xs ${isActive ? 'font-bold bg-white dark:bg-card-dark rounded shadow-sm' : 'font-medium text-slate-500'}`;
+            });
+        },
+
+        startHeaderClock() {
+            this.updateHeaderClock();
+            setInterval(() => this.updateHeaderClock(), 1000);
+        },
+
+        updateHeaderClock() {
             const now = new Date();
-            const format = (d) => d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
-            document.getElementById('clock-seoul').textContent = format(now);
-            const ny = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-            const lon = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }));
-            document.getElementById('clock-ny').textContent = format(ny);
-            document.getElementById('clock-lon').textContent = format(lon);
+            const format = (tz) => new Date(now.toLocaleString('en-US', { timeZone: tz })).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+            document.getElementById('clock-seoul').textContent = format('Asia/Seoul');
+            const tz1 = this.availableCities.find(c => c.tz === this.timezones[0]) || this.availableCities[0];
+            const tz2 = this.availableCities.find(c => c.tz === this.timezones[1]) || this.availableCities[1];
+            document.getElementById('clock-ny').textContent = format(tz1.tz);
+            document.getElementById('clock-lon').textContent = format(tz2.tz);
+            const labelNy = document.getElementById('clock-ny').previousElementSibling || document.getElementById('clock-ny').parentElement;
+            const labelLon = document.getElementById('clock-lon').previousElementSibling || document.getElementById('clock-lon').parentElement;
+            if (labelNy && labelNy.textContent) labelNy.childNodes[0].textContent = tz1.code + ' ';
+            if (labelLon && labelLon.textContent) labelLon.childNodes[0].textContent = tz2.code + ' ';
+        },
+
+        render() {
+            const container = document.getElementById('time-content');
+            if (this.currentTab === 'clock') this.renderClock(container);
+            else if (this.currentTab === 'timer') this.renderTimer(container);
+            else if (this.currentTab === 'stopwatch') this.renderStopwatch(container);
+        },
+
+        renderClock(container) {
+            const now = new Date();
+            const hrs = now.getHours();
+            const mins = now.getMinutes();
+            const secs = now.getSeconds();
+            const tzOptions = this.availableCities.map(c => `<option value="${c.tz}" ${this.timezones[0] === c.tz ? 'selected' : ''}>${c.name}</option>`).join('');
+            const tzOptions2 = this.availableCities.map(c => `<option value="${c.tz}" ${this.timezones[1] === c.tz ? 'selected' : ''}>${c.name}</option>`).join('');
+
+            container.innerHTML = `
+                <div class="flex flex-col md:flex-row items-center justify-center gap-6 flex-1">
+                    <div class="flex flex-col items-center">
+                        ${this.clockType === 'analog' ? `
+                        <div class="relative size-40 md:size-48">
+                            <svg viewBox="0 0 100 100" class="size-full">
+                                <circle cx="50" cy="50" r="48" fill="none" stroke="currentColor" class="text-slate-200 dark:text-slate-700" stroke-width="2"/>
+                                ${[...Array(12)].map((_, i) => `<line x1="50" y1="8" x2="50" y2="12" stroke="currentColor" class="text-slate-400" stroke-width="1.5" transform="rotate(${i * 30} 50 50)"/>`).join('')}
+                                <line id="clock-hour" x1="50" y1="50" x2="50" y2="25" stroke="currentColor" class="text-slate-800 dark:text-white" stroke-width="3" stroke-linecap="round" transform="rotate(${(hrs % 12) * 30 + mins * 0.5} 50 50)"/>
+                                <line id="clock-min" x1="50" y1="50" x2="50" y2="15" stroke="currentColor" class="text-slate-600 dark:text-slate-300" stroke-width="2" stroke-linecap="round" transform="rotate(${mins * 6} 50 50)"/>
+                                <line id="clock-sec" x1="50" y1="50" x2="50" y2="12" stroke="currentColor" class="text-primary" stroke-width="1" stroke-linecap="round" transform="rotate(${secs * 6} 50 50)"/>
+                                <circle cx="50" cy="50" r="3" fill="currentColor" class="text-primary"/>
+                            </svg>
+                        </div>` : `
+                        <div class="text-5xl md:text-6xl font-bold font-mono tracking-tight" id="digital-clock">${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}</div>
+                        <div class="text-sm text-slate-500 mt-2">${now.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}</div>
+                        `}
+                        <div class="flex gap-2 mt-4">
+                            <button id="clock-type-toggle" class="px-3 py-1 text-xs font-medium bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200">${this.clockType === 'analog' ? '디지털' : '원형'} 시계</button>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-4 w-full md:w-auto">
+                        <div class="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 space-y-3">
+                            <div class="flex items-center justify-between gap-4">
+                                <select id="tz-select-1" class="text-sm font-medium bg-transparent border-none p-0 pr-6 focus:ring-0 text-primary cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%23666%22%20d%3D%22M6%209L1%204h10z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_0_center]">${tzOptions}</select>
+                                <span id="tz-time-1" class="text-lg font-mono font-bold">--:--</span>
+                            </div>
+                            <div class="flex items-center justify-between gap-4">
+                                <select id="tz-select-2" class="text-sm font-medium bg-transparent border-none p-0 pr-6 focus:ring-0 text-primary cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%23666%22%20d%3D%22M6%209L1%204h10z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_0_center]">${tzOptions2}</select>
+                                <span id="tz-time-2" class="text-lg font-mono font-bold">--:--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+
+            document.getElementById('clock-type-toggle').addEventListener('click', () => {
+                this.clockType = this.clockType === 'analog' ? 'digital' : 'analog';
+                Storage.set('clockType', this.clockType);
+                this.render();
+            });
+
+            ['tz-select-1', 'tz-select-2'].forEach((id, i) => {
+                document.getElementById(id).addEventListener('change', (e) => {
+                    this.timezones[i] = e.target.value;
+                    Storage.set('timezones', this.timezones);
+                    this.updateHeaderClock();
+                    this.updateTzTimes();
+                });
+            });
+
+            this.updateTzTimes();
+            if (!this.clockInterval) {
+                this.clockInterval = setInterval(() => {
+                    if (this.currentTab === 'clock' && !document.activeElement.matches('#tz-select-1, #tz-select-2')) this.render();
+                }, 1000);
+            }
+        },
+
+        updateTzTimes() {
+            const now = new Date();
+            const format = (tz) => new Date(now.toLocaleString('en-US', { timeZone: tz })).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+            const tz1El = document.getElementById('tz-time-1');
+            const tz2El = document.getElementById('tz-time-2');
+            if (tz1El) tz1El.textContent = format(this.timezones[0]);
+            if (tz2El) tz2El.textContent = format(this.timezones[1]);
+        },
+
+        renderTimer(container) {
+            const mins = Math.floor(this.timerRemaining / 60);
+            const secs = this.timerRemaining % 60;
+            const progress = ((this.timerDuration - this.timerRemaining) / this.timerDuration) * 283;
+
+            container.innerHTML = `
+                <div class="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12 flex-1">
+                    <div class="relative size-40 md:size-48" id="timer-wheel-area">
+                        <svg class="size-full -rotate-90 transform" viewBox="0 0 100 100">
+                            <circle class="text-slate-100 dark:text-slate-800" cx="50" cy="50" fill="none" r="45" stroke="currentColor" stroke-width="6"></circle>
+                            <circle id="timer-progress" class="text-primary transition-all duration-300" cx="50" cy="50" fill="none" r="45" stroke="currentColor" stroke-dasharray="283" stroke-dashoffset="${progress}" stroke-linecap="round" stroke-width="6"></circle>
+                        </svg>
+                        <div class="absolute top-0 left-0 flex size-full flex-col items-center justify-center">
+                            <div id="timer-display-wrapper" class="cursor-pointer">
+                                <span id="timer-display" class="text-4xl md:text-5xl font-bold font-mono tracking-tighter select-none">${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}</span>
+                            </div>
+                            <input id="timer-input" type="text" class="hidden text-4xl md:text-5xl font-bold font-mono tracking-tighter text-center w-32 bg-transparent border-b-2 border-primary focus:outline-none" placeholder="MM:SS" />
+                            <span class="text-xs text-slate-400 mt-1">${!this.timerRunning ? '클릭하여 시간 입력' : '진행 중'}</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-4 w-full md:w-auto">
+                        <div class="flex gap-2 justify-center">
+                            <button id="timer-25" class="px-3 py-1 text-xs font-medium ${this.timerDuration === 25 * 60 ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'} rounded-full">25분</button>
+                            <button id="timer-50" class="px-3 py-1 text-xs font-medium ${this.timerDuration === 50 * 60 ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'} rounded-full">50분</button>
+                            <button id="timer-5" class="px-3 py-1 text-xs font-medium ${this.timerDuration === 5 * 60 ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'} rounded-full">5분</button>
+                        </div>
+                        <div class="flex gap-1 justify-center text-[10px]">
+                            <button id="alert-popup" class="px-2 py-0.5 rounded ${this.timerAlertType === 'popup' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}">팝업</button>
+                            <button id="alert-sound" class="px-2 py-0.5 rounded ${this.timerAlertType === 'sound' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}">소리</button>
+                            <button id="alert-both" class="px-2 py-0.5 rounded ${this.timerAlertType === 'both' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}">둘다</button>
+                        </div>
+                        <button id="timer-toggle" class="w-full md:w-40 bg-primary hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 transition-all active:scale-95">
+                            <span class="material-symbols-outlined">${this.timerRunning ? 'pause' : 'play_arrow'}</span><span>${this.timerRunning ? '일시정지' : '시작'}</span>
+                        </button>
+                        <button id="timer-reset" class="w-full md:w-40 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 font-semibold py-3 px-6 rounded-lg transition-all active:scale-95">초기화</button>
+                    </div>
+                </div>`;
+
+            // Wheel adjustment (only when stopped)
+            document.getElementById('timer-wheel-area').addEventListener('wheel', (e) => {
+                if (this.timerRunning) return;
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? -5 * 60 : 5 * 60;
+                this.timerDuration = Math.max(5 * 60, Math.min(120 * 60, this.timerDuration + delta));
+                this.timerRemaining = this.timerDuration;
+                Storage.set('timerDuration', this.timerDuration);
+                Storage.set('timerRemaining', this.timerRemaining);
+                this.render();
+            }, { passive: false });
+
+            ['25', '50', '5'].forEach(m => {
+                document.getElementById(`timer-${m}`).addEventListener('click', () => {
+                    if (this.timerRunning) return;
+                    this.timerDuration = parseInt(m) * 60;
+                    this.timerRemaining = this.timerDuration;
+                    Storage.set('timerDuration', this.timerDuration);
+                    Storage.set('timerRemaining', this.timerRemaining);
+                    this.render();
+                });
+            });
+
+            document.getElementById('timer-toggle').addEventListener('click', () => this.toggleTimer());
+            document.getElementById('timer-reset').addEventListener('click', () => this.resetTimer());
+            ['popup', 'sound', 'both'].forEach(type => {
+                document.getElementById(`alert-${type}`).addEventListener('click', () => {
+                    this.timerAlertType = type;
+                    Storage.set('timerAlertType', type);
+                    this.render();
+                });
+            });
+
+            // 클릭하여 시간 직접 입력
+            const displayWrapper = document.getElementById('timer-display-wrapper');
+            const display = document.getElementById('timer-display');
+            const input = document.getElementById('timer-input');
+            if (displayWrapper && !this.timerRunning) {
+                displayWrapper.addEventListener('click', () => {
+                    display.classList.add('hidden');
+                    input.classList.remove('hidden');
+                    input.value = '';
+                    input.focus();
+                });
+                input.addEventListener('blur', () => this.handleTimerInput(input.value));
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') this.handleTimerInput(input.value);
+                    if (e.key === 'Escape') this.render();
+                });
+            }
+        },
+
+        handleTimerInput(value) {
+            const parts = value.split(':');
+            let totalSeconds = 0;
+            if (parts.length === 2) {
+                totalSeconds = parseInt(parts[0] || 0) * 60 + parseInt(parts[1] || 0);
+            } else if (parts.length === 1 && parts[0]) {
+                totalSeconds = parseInt(parts[0]) * 60;
+            }
+            if (totalSeconds > 0 && totalSeconds <= 7200) {
+                this.timerDuration = totalSeconds;
+                this.timerRemaining = totalSeconds;
+                Storage.set('timerDuration', this.timerDuration);
+                Storage.set('timerRemaining', this.timerRemaining);
+            }
+            this.render();
+        },
+
+        toggleTimer() {
+            this.timerRunning = !this.timerRunning;
+            if (this.timerRunning) {
+                this.timerInterval = setInterval(() => {
+                    if (this.timerRemaining > 0) {
+                        this.timerRemaining--;
+                        Storage.set('timerRemaining', this.timerRemaining);
+                        this.updateTimerDisplay();
+                    } else {
+                        this.timerRunning = false;
+                        clearInterval(this.timerInterval);
+                        this.playTimerAlert();
+                        this.render();
+                    }
+                }, 1000);
+            } else {
+                clearInterval(this.timerInterval);
+            }
+            this.render();
+        },
+
+        updateTimerDisplay() {
+            const mins = Math.floor(this.timerRemaining / 60);
+            const secs = this.timerRemaining % 60;
+            const display = document.getElementById('timer-display');
+            const progress = document.getElementById('timer-progress');
+            if (display) display.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            if (progress) progress.setAttribute('stroke-dashoffset', ((this.timerDuration - this.timerRemaining) / this.timerDuration) * 283);
+        },
+
+        resetTimer() {
+            this.timerRunning = false;
+            clearInterval(this.timerInterval);
+            this.timerRemaining = this.timerDuration;
+            Storage.set('timerRemaining', this.timerRemaining);
+            this.render();
+        },
+
+        playTimerAlert() {
+            if (this.timerAlertType === 'popup' || this.timerAlertType === 'both') {
+                alert('⏰ 타이머 완료!');
+            }
+            if (this.timerAlertType === 'sound' || this.timerAlertType === 'both') {
+                try {
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    oscillator.frequency.value = 800;
+                    oscillator.type = 'sine';
+                    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
+                    oscillator.start(audioCtx.currentTime);
+                    oscillator.stop(audioCtx.currentTime + 1);
+                } catch (e) { console.log('Audio not supported'); }
+            }
+        },
+
+        renderStopwatch(container) {
+            const hrs = Math.floor(this.stopwatchTime / 3600);
+            const mins = Math.floor((this.stopwatchTime % 3600) / 60);
+            const secs = this.stopwatchTime % 60;
+            const ms = Math.floor((this.stopwatchTime * 100) % 100);
+
+            container.innerHTML = `
+                <div class="flex flex-col md:flex-row items-center justify-center gap-6 flex-1">
+                    <div class="flex flex-col items-center">
+                        ${this.stopwatchType === 'analog' ? `
+                        <div class="relative size-40 md:size-48">
+                            <svg viewBox="0 0 100 100" class="size-full">
+                                <circle cx="50" cy="50" r="48" fill="none" stroke="currentColor" class="text-slate-200 dark:text-slate-700" stroke-width="2"/>
+                                ${[...Array(60)].map((_, i) => `<line x1="50" y1="${i % 5 === 0 ? '6' : '8'}" x2="50" y2="10" stroke="currentColor" class="text-slate-400" stroke-width="${i % 5 === 0 ? '1.5' : '0.5'}" transform="rotate(${i * 6} 50 50)"/>`).join('')}
+                                <line x1="50" y1="50" x2="50" y2="15" stroke="currentColor" class="text-primary" stroke-width="2" stroke-linecap="round" transform="rotate(${secs * 6} 50 50)"/>
+                                <circle cx="50" cy="50" r="3" fill="currentColor" class="text-primary"/>
+                            </svg>
+                        </div>` : `
+                        <div class="text-5xl md:text-6xl font-bold font-mono tracking-tight">${hrs > 0 ? String(hrs).padStart(2, '0') + ':' : ''}${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}</div>
+                        `}
+                        <div class="flex gap-2 mt-4">
+                            <button id="sw-type-toggle" class="px-3 py-1 text-xs font-medium bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200">${this.stopwatchType === 'analog' ? '디지털' : '원형'}</button>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-4 w-full md:w-auto">
+                        <div class="flex gap-2 justify-center">
+                            <button id="sw-toggle" class="flex-1 md:w-32 bg-primary hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-95">
+                                <span class="material-symbols-outlined">${this.stopwatchRunning ? 'pause' : 'play_arrow'}</span>${this.stopwatchRunning ? '정지' : '시작'}
+                            </button>
+                            <button id="sw-lap" class="flex-1 md:w-32 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 font-semibold py-3 px-4 rounded-lg transition-all active:scale-95 ${!this.stopwatchRunning && this.stopwatchTime === 0 ? 'opacity-50' : ''}">랩</button>
+                            <button id="sw-reset" class="flex-1 md:w-32 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 font-semibold py-3 px-4 rounded-lg transition-all active:scale-95">초기화</button>
+                        </div>
+                        <div id="sw-laps" class="max-h-32 overflow-y-auto space-y-1 text-sm">
+                            ${[...this.stopwatchLaps].reverse().map((lap, i) => `<div class="flex justify-between bg-slate-50 dark:bg-slate-800 px-3 py-1 rounded"><span class="text-slate-500">#${this.stopwatchLaps.length - i}</span><span class="font-mono">${lap}</span></div>`).join('')}
+                        </div>
+                    </div>
+                </div>`;
+
+            document.getElementById('sw-type-toggle').addEventListener('click', () => {
+                this.stopwatchType = this.stopwatchType === 'analog' ? 'digital' : 'analog';
+                Storage.set('stopwatchType', this.stopwatchType);
+                this.render();
+            });
+
+            document.getElementById('sw-toggle').addEventListener('click', () => this.toggleStopwatch());
+            document.getElementById('sw-lap').addEventListener('click', () => this.lapStopwatch());
+            document.getElementById('sw-reset').addEventListener('click', () => this.resetStopwatch());
+        },
+
+        toggleStopwatch() {
+            this.stopwatchRunning = !this.stopwatchRunning;
+            if (this.stopwatchRunning) {
+                this.stopwatchInterval = setInterval(() => {
+                    this.stopwatchTime++;
+                    if (this.currentTab === 'stopwatch') this.render();
+                }, 1000);
+            } else {
+                clearInterval(this.stopwatchInterval);
+            }
+            this.render();
+        },
+
+        lapStopwatch() {
+            if (this.stopwatchTime === 0) return;
+            const hrs = Math.floor(this.stopwatchTime / 3600);
+            const mins = Math.floor((this.stopwatchTime % 3600) / 60);
+            const secs = this.stopwatchTime % 60;
+            const lapTime = `${hrs > 0 ? String(hrs).padStart(2, '0') + ':' : ''}${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            this.stopwatchLaps.push(lapTime);
+            if (this.stopwatchLaps.length > 10) this.stopwatchLaps.shift();
+            Storage.set('stopwatchLaps', this.stopwatchLaps);
+            this.render();
+        },
+
+        resetStopwatch() {
+            this.stopwatchRunning = false;
+            clearInterval(this.stopwatchInterval);
+            this.stopwatchTime = 0;
+            this.stopwatchLaps = [];
+            Storage.set('stopwatchLaps', []);
+            this.render();
         }
     };
 
@@ -101,65 +489,7 @@
         }
     };
 
-    // ===== 타이머 =====
-    const Timer = {
-        duration: 25 * 60,
-        remaining: Storage.get('timerRemaining', 25 * 60),
-        isRunning: false,
-        isPomodoro: true,
-        interval: null,
-        init() {
-            this.update();
-            document.getElementById('timer-toggle').addEventListener('click', () => this.toggle());
-            document.getElementById('timer-reset').addEventListener('click', () => this.reset());
-            document.getElementById('timer-pomodoro').addEventListener('click', () => this.setMode(true));
-            document.getElementById('timer-break').addEventListener('click', () => this.setMode(false));
-        },
-        setMode(isPomodoro) {
-            this.isPomodoro = isPomodoro;
-            this.duration = isPomodoro ? 25 * 60 : 5 * 60;
-            this.reset();
-            document.getElementById('timer-pomodoro').className = isPomodoro ? 'px-3 py-1 bg-primary text-white text-xs font-bold rounded-full' : 'px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-bold rounded-full';
-            document.getElementById('timer-break').className = !isPomodoro ? 'px-3 py-1 bg-primary text-white text-xs font-bold rounded-full' : 'px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-bold rounded-full';
-            document.getElementById('timer-mode').textContent = isPomodoro ? '집중 모드' : '휴식 모드';
-        },
-        toggle() {
-            this.isRunning = !this.isRunning;
-            const btn = document.getElementById('timer-toggle');
-            if (this.isRunning) {
-                btn.innerHTML = '<span class="material-symbols-outlined">pause</span><span>일시정지</span>';
-                this.interval = setInterval(() => this.tick(), 1000);
-            } else {
-                btn.innerHTML = '<span class="material-symbols-outlined">play_arrow</span><span>시작</span>';
-                clearInterval(this.interval);
-            }
-        },
-        tick() {
-            if (this.remaining > 0) {
-                this.remaining--;
-                Storage.set('timerRemaining', this.remaining);
-                this.update();
-            } else {
-                this.toggle();
-                alert(this.isPomodoro ? '집중 시간 완료! 휴식하세요.' : '휴식 끝! 다시 집중하세요.');
-            }
-        },
-        reset() {
-            this.remaining = this.duration;
-            this.isRunning = false;
-            clearInterval(this.interval);
-            Storage.set('timerRemaining', this.remaining);
-            document.getElementById('timer-toggle').innerHTML = '<span class="material-symbols-outlined">play_arrow</span><span>시작</span>';
-            this.update();
-        },
-        update() {
-            const mins = Math.floor(this.remaining / 60).toString().padStart(2, '0');
-            const secs = (this.remaining % 60).toString().padStart(2, '0');
-            document.getElementById('timer-display').textContent = `${mins}:${secs}`;
-            const progress = ((this.duration - this.remaining) / this.duration) * 283;
-            document.getElementById('timer-progress').setAttribute('stroke-dashoffset', progress);
-        }
-    };
+    // ===== (Timer 모듈 제거 - TimeWidget으로 통합됨) =====
 
     // ===== 할 일 목록 =====
     const Todo = {
@@ -400,9 +730,8 @@
     // ===== 초기화 =====
     document.addEventListener('DOMContentLoaded', () => {
         Theme.init();
-        Clock.init();
+        TimeWidget.init();
         Calendar.init();
-        Timer.init();
         Todo.init();
         Calc.init();
         Finance.init();
