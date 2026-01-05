@@ -48,14 +48,35 @@ export default async function handler(req, res) {
         const apiUrl = `https://stdict.korean.go.kr/api/search.do?${params.toString()}`;
 
         const response = await fetch(apiUrl);
+        const responseText = await response.text();
 
-        if (!response.ok) {
-            throw new Error(`API 응답 오류: ${response.status}`);
+        // 빈 응답 처리
+        if (!responseText || responseText.trim() === '') {
+            return res.status(200).json({ channel: { total: 0, item: [] } });
         }
 
-        const data = await response.json();
+        // XML 응답 체크
+        if (responseText.trim().startsWith('<?xml') || responseText.trim().startsWith('<')) {
+            return res.status(200).json({
+                error: {
+                    code: 'XML_RESPONSE',
+                    message: 'API가 일시적으로 XML 형식을 반환했습니다. 잠시 후 다시 시도해주세요.'
+                }
+            });
+        }
 
-        res.status(200).json(data);
+        try {
+            const data = JSON.parse(responseText);
+            res.status(200).json(data);
+        } catch (parseError) {
+            console.error('JSON Parse Error:', parseError.message);
+            res.status(500).json({
+                error: {
+                    code: 'PARSE_ERROR',
+                    message: 'API 응답 형식이 올바르지 않습니다.'
+                }
+            });
+        }
     } catch (error) {
         console.error('Dictionary API Error:', error);
         res.status(500).json({

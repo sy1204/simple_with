@@ -68,10 +68,38 @@ const server = http.createServer(async (req, res) => {
             const apiUrl = `https://stdict.korean.go.kr/api/search.do?key=${API_KEY}&q=${encodeURIComponent(query)}&req_type=json&num=10&advanced=n`;
 
             const apiResponse = await fetch(apiUrl);
-            const data = await apiResponse.json();
+            const responseText = await apiResponse.text();
 
-            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(data));
+            // 빈 응답 처리
+            if (!responseText || responseText.trim() === '') {
+                console.log('API returned empty response');
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ channel: { total: 0, item: [] } }));
+                return;
+            }
+
+            // XML 응답 체크
+            if (responseText.trim().startsWith('<?xml') || responseText.trim().startsWith('<')) {
+                console.error('API returned XML instead of JSON:', responseText.substring(0, 100));
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({
+                    error: {
+                        code: 'XML_RESPONSE',
+                        message: 'API가 일시적으로 XML 형식을 반환했습니다. 잠시 후 다시 시도해주세요.'
+                    }
+                }));
+                return;
+            }
+
+            try {
+                const data = JSON.parse(responseText);
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify(data));
+            } catch (parseError) {
+                console.error('JSON Parse Error:', parseError.message, 'Response:', responseText.substring(0, 100));
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: { code: 'PARSE_ERROR', message: 'API 응답 형식이 올바르지 않습니다.' } }));
+            }
         } catch (error) {
             console.error('API Error:', error);
             res.writeHead(500, { 'Content-Type': 'application/json' });
