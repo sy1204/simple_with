@@ -764,19 +764,19 @@
                 depth: newDepth
             });
             input.value = '';
-            this.save(); this.render(); Progress.update();
+            this.save(); this.render();
         },
 
         toggle(id) {
             const item = this.items.find(i => i.id === id);
             if (item) item.done = !item.done;
-            this.save(); this.render(); Progress.update();
+            this.save(); this.render();
         },
 
         remove(id) {
             this.items = this.items.filter(i => i.id !== id);
             if (this.activeItemId === id) this.activeItemId = null;
-            this.save(); this.render(); Progress.update();
+            this.save(); this.render();
         },
 
         select(id) {
@@ -1393,24 +1393,6 @@
         }
     };
 
-    // ===== 진행률 =====
-    const Progress = {
-        update() {
-            const todos = Storage.get('todos', []);
-            const total = todos.length;
-            const done = todos.filter(t => t.done).length;
-            const percent = total ? Math.round((done / total) * 100) : 0;
-            document.getElementById('progress-percent').textContent = percent + '%';
-            document.getElementById('progress-text').textContent = total ? `${total}개 중 ${done}개를 완료했습니다.` : '할 일을 추가하고 완료해보세요!';
-            const bar = document.getElementById('progress-bar');
-            bar.innerHTML = '';
-            for (let i = 0; i < 5; i++) {
-                const filled = percent >= (i + 1) * 20;
-                bar.innerHTML += `<span class="h-2 flex-1 bg-white/30 rounded-full overflow-hidden"><span class="block h-full ${filled ? 'bg-white' : 'bg-transparent'} w-full rounded-full"></span></span>`;
-            }
-        }
-    };
-
     // ===== 초기화 =====
     document.addEventListener('DOMContentLoaded', () => {
         Theme.init();
@@ -1421,6 +1403,5 @@
         Finance.init();
         Converter.init();
         Memo.init();
-        Progress.update();
     });
 })();
