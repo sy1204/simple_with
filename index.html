@@ -318,15 +318,45 @@
                     <!-- Calculator Card -->
                     <div id="calculator"
                         class="card group relative col-span-1 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
-                        <h3 class="text-sm font-semibold text-slate-500 mb-4 flex items-center gap-2">
-                            <span class="material-symbols-outlined text-lg">calculate</span>공학 계산기
+                        <h3 class="text-lg font-bold flex items-center gap-2 mb-4">
+                            <span class="material-symbols-outlined text-primary">calculate</span>계산기
                         </h3>
-                        <div
-                            class="flex-1 bg-background-light dark:bg-[#111822] rounded-lg p-3 mb-3 text-right flex flex-col justify-end">
-                            <div id="calc-history" class="text-xs text-slate-400 mb-1 h-4 overflow-hidden"></div>
-                            <div id="calc-display" class="text-2xl font-mono font-bold">0</div>
+
+                        <div class="flex flex-col h-full not-prose">
+                            <!-- 히스토리 영역 -->
+                            <div
+                                class="relative flex-1 min-h-[60px] mb-2 bg-slate-50 dark:bg-slate-800/20 rounded-lg group/history">
+                                <div id="calc-history-container"
+                                    class="absolute inset-0 overflow-y-auto p-2 space-y-1 text-right text-xs text-slate-400 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+                                    <!-- 히스토리 아이템들이 여기에 동적으로 추가됨 -->
+                                </div>
+                                <button id="calc-clear-history"
+                                    class="absolute top-1 left-1 p-1 text-slate-300 hover:text-red-400 transition-colors z-10 opacity-0 group-hover/history:opacity-100"
+                                    title="기록 지우기">
+                                    <span class="material-symbols-outlined text-[14px]">delete</span>
+                                </button>
+                            </div>
+
+                            <!-- 입력 및 프리뷰 영역 -->
+                            <div class="mb-4 relative bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 group/input">
+                                <div id="calc-preview" class="text-right text-xs text-slate-400 h-4 mb-1"></div>
+                                <input id="calc-display" type="text"
+                                    class="w-full text-right text-2xl font-bold bg-transparent border-none focus:ring-0 p-0 text-slate-700 dark:text-slate-200 placeholder-slate-300"
+                                    placeholder="0" autocomplete="off" />
+
+                                <!-- 되돌리기 버튼 -->
+                                <button id="calc-undo"
+                                    class="absolute bottom-3 left-3 p-1 text-slate-300 hover:text-primary transition-colors opacity-0 group-hover/input:opacity-100 hidden"
+                                    title="식으로 돌아가기 (Undo)">
+                                    <span class="material-symbols-outlined text-lg">undo</span>
+                                </button>
+                            </div>
+
+                            <!-- 버튼 영역 -->
+                            <div id="calc-buttons" class="grid grid-cols-4 gap-2">
+                                <!-- JS로 버튼 생성 -->
+                            </div>
                         </div>
-                        <div id="calc-buttons" class="grid grid-cols-4 gap-2 h-full"></div>
                     </div>
 
                     <!-- Finance Card -->

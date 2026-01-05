@@ -937,52 +937,219 @@
     window.Todo = Todo;
 
     // ===== 계산기 =====
+    // ===== 계산기 =====
     const Calc = {
-        display: '0', history: '', lastResult: Storage.get('calcResult', '0'),
+        historyList: Storage.get('calcHistoryList', []),
+        lastExpression: null, // 되돌리기 기능을 위한 변수
+
         init() {
+            this.renderHistory();
+            const display = document.getElementById('calc-display');
+            display.focus();
+
+            // 되돌리기, 히스토리 삭제 버튼 로직
+            const undoBtn = document.getElementById('calc-undo');
+            const clearHistoryBtn = document.getElementById('calc-clear-history');
+
+            undoBtn.addEventListener('click', () => this.undo());
+            clearHistoryBtn.addEventListener('click', () => this.clearHistory());
+
+            // 버튼 생성 (괄호 추가, 레이아웃 수정)
             const buttons = [
-                { t: 'sin', cls: 'func' }, { t: 'cos', cls: 'func' }, { t: 'tan', cls: 'func' }, { t: 'log', cls: 'func' },
-                { t: 'AC', cls: 'gray' }, { t: '+/-', cls: 'gray' }, { t: '%', cls: 'gray' }, { t: '÷', cls: 'orange' },
-                { t: '7' }, { t: '8' }, { t: '9' }, { t: '×', cls: 'orange' },
+                { t: 'AC', cls: 'gray' }, { t: 'DEL', cls: 'gray' }, { t: '(', cls: 'gray' }, { t: ')', cls: 'gray' },
+                { t: '7' }, { t: '8' }, { t: '9' }, { t: '+', cls: 'orange' },
                 { t: '4' }, { t: '5' }, { t: '6' }, { t: '-', cls: 'orange' },
-                { t: '1' }, { t: '2' }, { t: '3' }, { t: '+', cls: 'orange' },
-                { t: '0', cls: 'wide' }, { t: '.' }, { t: '=', cls: 'primary' }
+                { t: '1' }, { t: '2' }, { t: '3' }, { t: '×', cls: 'orange' },
+                { t: '0' }, { t: '.' }, { t: '=', cls: 'primary' }, { t: '÷', cls: 'orange' }
             ];
+
+            // 0 버튼이 1칸으로 줄고 . 버튼이 넓어지는 배치가 이상할 수 있음.
+            // 보통 0이 넓음. 사용자 요청 "괄호 버튼 생성"을 위해 0을 줄이고 괄호를 넣음.
+            // 위 배열에서 0과 .의 클래스를 반대로 하거나 조정 필요.
+            // 수정: 마지막 줄 [0, ., =, +] -> 4칸. 0을 1칸으로.
+
             const container = document.getElementById('calc-buttons');
+            container.innerHTML = '';
+
             buttons.forEach(b => {
-                let cls = 'rounded-lg text-sm font-medium h-10 ';
-                if (b.cls === 'func') cls += 'bg-slate-100 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-200 text-[10px]';
-                else if (b.cls === 'gray') cls += 'bg-slate-50 dark:bg-slate-800 text-slate-600 hover:bg-slate-100';
-                else if (b.cls === 'orange') cls += 'bg-orange-100 dark:bg-orange-900/20 text-orange-600 hover:bg-orange-200';
-                else if (b.cls === 'primary') cls += 'bg-primary text-white hover:bg-blue-600';
-                else if (b.cls === 'wide') cls += 'col-span-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-lg';
-                else cls += 'hover:bg-slate-50 dark:hover:bg-slate-800 text-lg';
+                let cls = 'rounded-lg text-sm font-medium h-10 transition-colors ';
+                if (b.cls === 'gray') cls += 'bg-slate-100 dark:bg-slate-800 text-slate-600 hover:bg-slate-200';
+                else if (b.cls === 'orange') cls += 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/40';
+                else if (b.cls === 'primary') cls += 'bg-primary text-white hover:bg-blue-600 shadow-md shadow-blue-200 dark:shadow-none';
+                else if (b.cls === 'wide') cls += 'col-span-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-lg'; // 여기서는 사용 안 함
+                else cls += 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm border border-slate-100 dark:border-slate-700'; // 숫자
+
                 container.innerHTML += `<button class="${cls}" data-val="${b.t}">${b.t}</button>`;
             });
-            container.addEventListener('click', (e) => { if (e.target.dataset.val) this.input(e.target.dataset.val); });
-            this.update();
+
+            // 이벤트 리스너
+            container.addEventListener('click', (e) => {
+                const val = e.target.dataset.val;
+                if (val) {
+                    this.input(val);
+                    display.focus();
+                }
+            });
+
+            // 키보드 입력
+            display.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.calculate();
+                } else if (e.key === 'Escape') {
+                    this.input('AC');
+                } else {
+                    // 계산 결과가 표시된 상태에서 숫자/기호 입력 시 되돌리기 버튼 숨김 로직 필요할 수 있음
+                    // (input 함수에서 처리)
+                }
+            });
+
+            // 히스토리 항목 클릭 복사
+            document.getElementById('calc-history-container').addEventListener('click', (e) => {
+                const item = e.target.closest('.history-item');
+                if (item) {
+                    const text = item.dataset.expr;
+                    if (text) {
+                        display.value = text;
+                        display.focus();
+                        this.toggleUndo(false); // 새로 값을 썼으니 undo 불가
+                    }
+                }
+            });
         },
+
         input(val) {
-            if (val === 'AC') { this.display = '0'; this.history = ''; }
-            else if (val === '+/-') { this.display = (parseFloat(this.display) * -1).toString(); }
-            else if (val === '%') { this.display = (parseFloat(this.display) / 100).toString(); }
-            else if (val === '=') { this.calculate(); }
-            else if (['sin', 'cos', 'tan', 'log'].includes(val)) { this.display = Math[val === 'log' ? 'log10' : val](parseFloat(this.display) * (val !== 'log' ? Math.PI / 180 : 1)).toFixed(6); }
-            else if (['+', '-', '×', '÷'].includes(val)) { this.history = this.display + ' ' + val + ' '; this.display = '0'; }
-            else { this.display = this.display === '0' && val !== '.' ? val : this.display + val; }
-            this.update();
+            const display = document.getElementById('calc-display');
+            const preview = document.getElementById('calc-preview');
+            const current = display.value;
+
+            // 계산 결과가 표시된 직후였다면, 숫자를 누르면 새 시작, 연산자를 누르면 이어가기?
+            // 현재 로직은 그냥 이어붙임.
+            // 하지만 undo 버튼이 떠 있다면, 사용자가 입력을 시작하는 순간 undo 버튼은 사라져야 자연스러움.
+            if (document.getElementById('calc-undo').style.display !== 'none') {
+                if (['AC', 'DEL', '='].includes(val) || !val) {
+                    // 기능키는 유지? 아니면 숨김?
+                    // 새 입력이 들어오면 과거 식 복구 기회는 사라지는게 일반적이나
+                    // 여기서는 명시적으로 '식으로 돌아가기'이므로 유지하다가, 식이 변형되면 그때 사라지게?
+                    // 단순히: 입력이 발생하면 undo 숨김.
+                }
+                this.toggleUndo(false);
+                // 결과값 상태에서 숫자를 치면 덮어쓰기? 연산자를 치면 이어쓰기?
+                // 일반 계산기: 결과 30 -> '+ 5' -> 30+5
+                // 결과 30 -> '5' -> 5 (새로운 숫자)
+                // 이를 구현하려면 isResultState 같은 플래그 필요.
+                // 여기서는 간단히: 결과값도 그냥 텍스트로 취급.
+                if (preview.textContent.includes('=') && !['+', '-', '×', '÷', '%'].includes(val) && !isNaN(parseInt(val))) {
+                    // 결과가 나왔는데 숫자를 입력하면 초기화 후 입력 (일반적 계산기 UX)
+                    // 하지만 여기는 텍스트 에디터 방식이므로 그대로 둠. 사용자가 직접 지우거나 해야 함.
+                    // 사용자 경험사 AC 누르고 하는게 맞음.
+                }
+                preview.textContent = ''; // 프리뷰 초기화
+            }
+
+            if (val === 'AC') {
+                display.value = '';
+                preview.textContent = '';
+                this.toggleUndo(false);
+            } else if (val === 'DEL') {
+                display.value = current.slice(0, -1);
+            } else if (val === '=') {
+                this.calculate();
+            } else {
+                let inputVal = val;
+                if (val === '×') inputVal = '*';
+                if (val === '÷') inputVal = '/';
+                display.value = current + inputVal;
+            }
         },
+
         calculate() {
+            const display = document.getElementById('calc-display');
+            const preview = document.getElementById('calc-preview');
+            let expression = display.value;
+
+            if (!expression.trim()) return;
+
             try {
-                const expr = (this.history + this.display).replace(/×/g, '*').replace(/÷/g, '/');
-                this.history = this.history + this.display + ' =';
-                this.display = eval(expr).toString();
-                Storage.set('calcResult', this.display);
-            } catch { this.display = 'Error'; }
+                // 저장해두기 (Undo용)
+                this.lastExpression = expression;
+
+                const calcExpr = expression.replace(/×/g, '*').replace(/÷/g, '/').replace(/%/g, '/100');
+                if (/[^0-9+\-*/().\s]/.test(calcExpr)) throw new Error("Invalid Input");
+
+                const result = eval(calcExpr);
+                const formattedResult = result.toString();
+
+                this.historyList.push({ expr: expression, res: formattedResult });
+                if (this.historyList.length > 5) this.historyList.shift(); // 5개만 유지 (요청사항)
+
+                Storage.set('calcHistoryList', this.historyList);
+                this.renderHistory();
+
+                preview.textContent = expression + ' =';
+                display.value = formattedResult;
+
+                // 되돌리기 버튼 표시
+                this.toggleUndo(true);
+
+            } catch (e) {
+                display.value = 'Error';
+                setTimeout(() => { if (display.value === 'Error') display.value = expression; }, 1500);
+            }
         },
-        update() {
-            document.getElementById('calc-display').textContent = this.display;
-            document.getElementById('calc-history').textContent = this.history;
+
+        undo() {
+            if (this.lastExpression) {
+                const display = document.getElementById('calc-display');
+                display.value = this.lastExpression;
+                document.getElementById('calc-preview').textContent = '';
+                this.toggleUndo(false);
+                display.focus();
+            }
+        },
+
+        toggleUndo(show) {
+            const btn = document.getElementById('calc-undo');
+            if (btn) {
+                // tailwind 'hidden' 클래스 토글 대신 style.display 사용 (transition 효과 위해 opacity 조절하지만 display도 필요)
+                // hidden 클래스를 쓰면 transition 안됨.
+                if (show) {
+                    btn.classList.remove('hidden');
+                    // 약간의 딜레이 후 opacity 1 (fade in)
+                    setTimeout(() => btn.classList.remove('opacity-0'), 10);
+                } else {
+                    btn.classList.add('opacity-0');
+                    setTimeout(() => btn.classList.add('hidden'), 300); // transition duration 후 숨김
+                }
+            }
+        },
+
+        clearHistory() {
+            this.historyList = [];
+            Storage.set('calcHistoryList', []);
+            this.renderHistory();
+        },
+
+        renderHistory() {
+            const container = document.getElementById('calc-history-container');
+            if (!container) return;
+
+            if (this.historyList.length === 0) {
+                container.innerHTML = '<div class="text-center py-4 text-[10px] opacity-50">기록 없음</div>';
+                return;
+            }
+
+            // 최신 기록이 아래에? 위에? 
+            // "계산 기록은 5개까지 표시하고 더 길어지면 스크롤바로"
+            // 보통 계산기는 아래에 최신이 쌓임.
+            container.innerHTML = this.historyList.map(item => `
+                <div class="history-item cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded px-1 transition-colors group" title="클릭하여 수식 복사" data-expr="${item.expr}">
+                    <div class="text-[10px] text-slate-300 group-hover:text-slate-500">${item.expr} =</div>
+                    <div class="font-medium text-slate-500 group-hover:text-primary transition-colors">${item.res}</div>
+                </div>
+            `).join('');
+
+            container.scrollTop = container.scrollHeight;
         }
     };
 
