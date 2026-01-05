@@ -10,11 +10,19 @@ const url = require('url');
 const envPath = path.join(__dirname, '.env');
 if (fs.existsSync(envPath)) {
     const envContent = fs.readFileSync(envPath, 'utf8');
-    envContent.split('\n').forEach(line => {
+    envContent.split(/\r?\n/).forEach(line => {
         const trimmed = line.trim();
         if (trimmed && !trimmed.startsWith('#')) {
-            const [key, ...valueParts] = trimmed.split('=');
-            process.env[key.trim()] = valueParts.join('=').trim();
+            const index = trimmed.indexOf('=');
+            if (index > -1) {
+                const key = trimmed.substring(0, index).trim();
+                let value = trimmed.substring(index + 1).trim();
+                // 따옴표 제거
+                if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+                    value = value.substring(1, value.length - 1);
+                }
+                process.env[key] = value;
+            }
         }
     });
 }
@@ -36,6 +44,8 @@ const MIME_TYPES = {
 const server = http.createServer(async (req, res) => {
     const parsedUrl = url.parse(req.url, true);
     const pathname = parsedUrl.pathname;
+
+    console.log(`[Server] ${req.method} ${pathname}`);
 
     // CORS 헤더
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -156,5 +166,5 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
     console.log(`\n🚀 로컬 개발 서버 실행 중: http://localhost:${PORT}`);
     console.log(`📖 사전 API: http://localhost:${PORT}/api/dictionary?q=나무`);
-    console.log(`🔑 API Key: ${API_KEY ? '설정됨 ✓' : '❌ 설정되지 않음'}\n`);
+    console.log(`🔑 API Key: ${API_KEY ? `설정됨 (${API_KEY.substring(0, 5)}...) ✓` : '❌ 설정되지 않음'}\n`);
 });
