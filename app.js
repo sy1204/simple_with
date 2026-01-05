@@ -1316,7 +1316,80 @@
         init() {
             const textarea = document.getElementById('memo-text');
             textarea.value = Storage.get('memo', '');
+
             textarea.addEventListener('input', () => Storage.set('memo', textarea.value));
+
+            textarea.addEventListener('keydown', (e) => {
+                const { selectionStart, selectionEnd, value } = textarea;
+                const lines = value.substring(0, selectionStart).split('\n');
+                const currentLine = lines[lines.length - 1];
+
+                // 1. Enter 키 처리 (자동 리스트 생성)
+                if (e.key === 'Enter') {
+                    // 불렛 리스트 (*, -) 또는 숫자 리스트 (1.) 패턴 매칭
+                    const bulletMatch = currentLine.match(/^(\s*)([*-])\s(.*)/);
+                    const numberMatch = currentLine.match(/^(\s*)(\d+)\.\s(.*)/);
+
+                    if (bulletMatch || numberMatch) {
+                        e.preventDefault();
+                        const indent = (bulletMatch ? bulletMatch[1] : numberMatch[1]);
+                        const content = (bulletMatch ? bulletMatch[3] : numberMatch[3]);
+
+                        // 현재 행에 내용이 없으면 리스트 종료
+                        if (!content.trim()) {
+                            const newText = value.substring(0, selectionStart - currentLine.length) + '\n' + value.substring(selectionEnd);
+                            textarea.value = newText;
+                            textarea.selectionStart = textarea.selectionEnd = selectionStart - currentLine.length + 1;
+                            return;
+                        }
+
+                        let nextPrefix = bulletMatch ? bulletMatch[2] : (parseInt(numberMatch[2]) + 1) + '.';
+                        const insertion = `\n${indent}${nextPrefix} `;
+
+                        textarea.value = value.substring(0, selectionStart) + insertion + value.substring(selectionEnd);
+                        textarea.selectionStart = textarea.selectionEnd = selectionStart + insertion.length;
+                        Storage.set('memo', textarea.value);
+                    }
+                }
+
+                // 2. Tab 키 처리 (위계 설정 - 2칸 들여쓰기)
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const isShift = e.shiftKey;
+
+                    // 여러 줄 선택 대응
+                    const before = value.substring(0, selectionStart);
+                    const after = value.substring(selectionEnd);
+                    const startOfLine = before.lastIndexOf('\n') + 1;
+                    const endOfLine = selectionEnd + (after.indexOf('\n') !== -1 ? after.indexOf('\n') : after.length);
+
+                    const selection = value.substring(startOfLine, endOfLine);
+                    const selectedLines = selection.split('\n');
+
+                    const newLines = selectedLines.map(line => {
+                        if (isShift) {
+                            // 앞의 공백 2칸 제거 (또는 탭 1개 제거)
+                            return line.startsWith('  ') ? line.substring(2) : (line.startsWith('\t') ? line.substring(1) : line);
+                        } else {
+                            // 공백 2칸 추가
+                            return '  ' + line;
+                        }
+                    });
+
+                    const newContent = newLines.join('\n');
+                    textarea.value = value.substring(0, startOfLine) + newContent + value.substring(endOfLine);
+
+                    // 포커스 유지 및 선택 영역 복구
+                    if (selectionStart === selectionEnd) {
+                        const diff = newLines[0].length - selectedLines[0].length;
+                        textarea.selectionStart = textarea.selectionEnd = Math.max(startOfLine, selectionStart + diff);
+                    } else {
+                        textarea.selectionStart = startOfLine;
+                        textarea.selectionEnd = startOfLine + newContent.length;
+                    }
+                    Storage.set('memo', textarea.value);
+                }
+            });
         }
     };
 
