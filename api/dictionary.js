@@ -1,7 +1,7 @@
 // 표준국어대사전 API 프록시 (검색만 지원)
 // Vercel Serverless Function
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
     // CORS 헤더 설정
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
