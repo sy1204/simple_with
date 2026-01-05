@@ -722,44 +722,216 @@
     // ===== 할 일 목록 =====
     const Todo = {
         items: Storage.get('todos', []),
+        activeItemId: null,
+        draggedItem: null,
+
         init() {
             this.render();
             document.getElementById('todo-add').addEventListener('click', () => this.add());
-            document.getElementById('todo-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') this.add(); });
+            document.getElementById('todo-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.add();
+            });
+
+            // 키보드 조작 (Tab: 들여쓰기, Shift+Tab: 내어쓰기)
+            document.addEventListener('keydown', (e) => {
+                if (this.activeItemId && e.key === 'Tab') {
+                    // 할 일 목록이나 입력창에 포커스가 있거나, 활성 아이템이 있을 때만 동작해야 함
+                    // 하지만 전역으로 잡으면 다른 Tab 동작을 방해할 수 있으므로 주의.
+                    // 여기서는 activeItemId가 있을 때만 동작하도록 함.
+                    e.preventDefault();
+                    this.changeDepth(this.activeItemId, e.shiftKey ? -1 : 1);
+                }
+            });
+
+            // 드래그 이벤트
+            document.addEventListener('mousemove', (e) => this.handleDragMove(e));
+            document.addEventListener('mouseup', (e) => this.handleDragEnd(e));
         },
+
         add() {
             const input = document.getElementById('todo-input');
             if (!input.value.trim()) return;
-            this.items.push({ id: Date.now(), text: input.value.trim(), done: false, time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) });
+
+            // 새 항목은 마지막 항목의 depth를 따르거나 0으로 시작
+            const lastItem = this.items[this.items.length - 1];
+            const newDepth = lastItem ? (lastItem.depth || 0) : 0;
+
+            this.items.push({
+                id: Date.now(),
+                text: input.value.trim(),
+                done: false,
+                time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+                depth: newDepth
+            });
             input.value = '';
             this.save(); this.render(); Progress.update();
         },
+
         toggle(id) {
             const item = this.items.find(i => i.id === id);
             if (item) item.done = !item.done;
             this.save(); this.render(); Progress.update();
         },
+
         remove(id) {
             this.items = this.items.filter(i => i.id !== id);
+            if (this.activeItemId === id) this.activeItemId = null;
             this.save(); this.render(); Progress.update();
         },
+
+        select(id) {
+            this.activeItemId = id;
+            this.render();
+        },
+
+        changeDepth(id, delta) {
+            const index = this.items.findIndex(i => i.id === id);
+            if (index === -1) return;
+
+            const item = this.items[index];
+            let newDepth = (item.depth || 0) + delta;
+
+            // Depth 제한 (0 이상)
+            if (newDepth < 0) newDepth = 0;
+
+            // 부모보다 최대 1단계까지만 깊어질 수 있음
+            if (index > 0) {
+                const prevItem = this.items[index - 1];
+                const maxDepth = (prevItem.depth || 0) + 1;
+                if (newDepth > maxDepth) newDepth = maxDepth;
+            } else {
+                newDepth = 0; // 첫 번째 항목은 항상 0
+            }
+
+            if (item.depth !== newDepth) {
+                item.depth = newDepth;
+                this.save(); this.render();
+            }
+        },
+
+        handleDragStart(e, id) {
+            // 마우스 왼쪽 버튼만 허용
+            if (e.button !== 0) return;
+            e.preventDefault(); // 텍스트 선택 방지
+
+            this.draggedItem = this.items.find(i => i.id === id);
+            this.activeItemId = id;
+            this.render();
+            document.body.style.cursor = 'grabbing';
+        },
+
+        handleDragMove(e) {
+            if (!this.draggedItem) return;
+
+            const list = document.getElementById('todo-list');
+            const items = Array.from(list.children);
+            const mouseY = e.clientY;
+
+            // 마우스 위치에 가장 가까운 아이템 찾기
+            let closestItem = null;
+            let closestOffset = Number.NEGATIVE_INFINITY;
+
+            items.forEach(item => {
+                const box = item.getBoundingClientRect();
+                const offset = mouseY - box.top - box.height / 2;
+                // 위쪽 절반에 가까운지 확인
+                if (offset < 0 && offset > closestOffset) {
+                    closestOffset = offset;
+                    closestItem = item;
+                }
+            });
+
+            const currentIndex = this.items.findIndex(i => i.id === this.draggedItem.id);
+            let targetIndex = this.items.length; // 기본: 맨 뒤
+
+            if (closestItem) {
+                targetIndex = this.items.findIndex(i => i.id === parseInt(closestItem.dataset.id));
+            } else {
+                // 리스트 내부지만 아이템들보다 아래에 있을 때 등 처리 가능
+                // 여기서는 간단히 구현
+            }
+
+            // 배열 내 이동
+            if (closestItem) {
+                const targetId = parseInt(closestItem.dataset.id);
+                const targetIdx = this.items.findIndex(i => i.id === targetId);
+
+                if (currentIndex !== targetIdx) {
+                    const [movedItem] = this.items.splice(currentIndex, 1);
+                    this.items.splice(targetIdx, 0, movedItem);
+                    this.render();
+                }
+            } else {
+                // 맨 마지막으로 이동 (마우스가 리스트 하단 영역일 때)
+                const listRect = list.getBoundingClientRect();
+                // 마지막 아이템이 아니면서, 리스트 바닥 근처에 마우스가 있을 때
+                if (currentIndex !== this.items.length - 1 && mouseY > listRect.bottom - 20) {
+                    const [movedItem] = this.items.splice(currentIndex, 1);
+                    this.items.push(movedItem);
+                    this.render();
+                }
+            }
+        },
+
+        handleDragEnd(e) {
+            if (!this.draggedItem) return;
+            this.draggedItem = null;
+            document.body.style.cursor = 'default';
+
+            // 드래그 종료 후 Depth 유효성 검사 (순서 변경 시 위계 깨짐 방지)
+            this.items.forEach((item, index) => {
+                if (index === 0) {
+                    item.depth = 0;
+                } else {
+                    const prevDepth = this.items[index - 1].depth || 0;
+                    if ((item.depth || 0) > prevDepth + 1) {
+                        item.depth = prevDepth + 1;
+                    }
+                }
+            });
+
+            this.save(); this.render();
+        },
+
         save() { Storage.set('todos', this.items); },
+
         render() {
             const list = document.getElementById('todo-list');
-            list.innerHTML = this.items.map(item => `
-                <div class="flex items-start gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg group/item transition-colors">
-                    <button onclick="window.Todo.toggle(${item.id})" class="${item.done ? 'text-primary' : 'text-slate-300 hover:text-primary'} mt-0.5">
+            if (!list) return;
+
+            list.innerHTML = this.items.map(item => {
+                const depth = item.depth || 0;
+                const marginLeft = depth * 24; // Depth 당 24px
+                const isActive = this.activeItemId === item.id;
+
+                return `
+                <div data-id="${item.id}" 
+                     class="flex items-start gap-2 p-2 rounded-lg group/item transition-colors ${isActive ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}"
+                     style="margin-left: ${marginLeft}px"
+                     onclick="window.Todo.select(${item.id})">
+                     
+                    <!-- 드래그 핸들 (마우스 다운 시 시작) -->
+                    <div class="cursor-grab text-slate-300 hover:text-slate-500 mt-1 opacity-0 group-hover/item:opacity-100"
+                         onmousedown="event.stopPropagation(); window.Todo.handleDragStart(event, ${item.id})">
+                        <span class="material-symbols-outlined text-lg">drag_indicator</span>
+                    </div>
+
+                    <button onclick="event.stopPropagation(); window.Todo.toggle(${item.id})" 
+                            class="${item.done ? 'text-primary' : 'text-slate-300 hover:text-primary'} mt-0.5">
                         <span class="material-symbols-outlined text-xl">${item.done ? 'check_box' : 'check_box_outline_blank'}</span>
                     </button>
-                    <div class="flex-1">
-                        <p class="text-sm ${item.done ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'} leading-snug">${item.text}</p>
+                    
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm ${item.done ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'} leading-snug truncate">${item.text}</p>
                         <span class="text-[10px] text-slate-400">${item.time}</span>
                     </div>
-                    <button onclick="window.Todo.remove(${item.id})" class="text-slate-300 hover:text-red-500 opacity-0 group-hover/item:opacity-100">
+                    
+                    <button onclick="event.stopPropagation(); window.Todo.remove(${item.id})" 
+                            class="text-slate-300 hover:text-red-500 opacity-0 group-hover/item:opacity-100">
                         <span class="material-symbols-outlined text-sm">close</span>
                     </button>
                 </div>
-            `).join('');
+            `}).join('');
         }
     };
     window.Todo = Todo;
