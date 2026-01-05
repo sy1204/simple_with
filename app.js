@@ -448,44 +448,272 @@
     // ===== 캘린더 =====
     const Calendar = {
         date: new Date(),
+        holidays: {},
+        viewMode: Storage.get('calendarViewMode', 1), // 1, 2, 3 달 보기
+        activeDdayInput: null, // 현재 포커스된 D-Day 입력 필드
+
         init() {
+            this.loadHolidays();
             this.render();
-            document.getElementById('prev-month').addEventListener('click', () => { this.date.setMonth(this.date.getMonth() - 1); this.render(); });
-            document.getElementById('next-month').addEventListener('click', () => { this.date.setMonth(this.date.getMonth() + 1); this.render(); });
-            const ddayInput = document.getElementById('dday-input');
-            ddayInput.value = Storage.get('dday', '');
-            ddayInput.addEventListener('input', () => { Storage.set('dday', ddayInput.value); this.updateDday(); });
+            document.getElementById('go-today').addEventListener('click', () => { this.date = new Date(); this.render(); });
+
+            // 휠로 월 단위 이동
+            document.getElementById('calendar-area').addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const direction = e.deltaY > 0 ? 1 : -1;
+                this.date.setMonth(this.date.getMonth() + direction);
+                this.render();
+            }, { passive: false });
+
+            // 다달 보기 버튼
+            [1, 2, 3].forEach(m => {
+                document.getElementById(`view-${m}m`).addEventListener('click', () => {
+                    this.viewMode = m;
+                    Storage.set('calendarViewMode', m);
+                    this.updateViewButtons();
+                    this.render();
+                });
+            });
+            this.updateViewButtons();
+
+            // D-Day 입력
+            const fromInput = document.getElementById('dday-from');
+            const toInput = document.getElementById('dday-to');
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+            fromInput.value = Storage.get('ddayFrom', todayStr);
+            toInput.value = Storage.get('ddayTo', '');
+            fromInput.addEventListener('input', () => { Storage.set('ddayFrom', fromInput.value); this.updateDday(); });
+            toInput.addEventListener('input', () => { Storage.set('ddayTo', toInput.value); this.updateDday(); });
+            fromInput.addEventListener('focus', () => { this.activeDdayInput = 'from'; });
+            toInput.addEventListener('focus', () => { this.activeDdayInput = 'to'; });
+            fromInput.addEventListener('blur', () => { setTimeout(() => { if (this.activeDdayInput === 'from') this.activeDdayInput = null; }, 200); });
+            toInput.addEventListener('blur', () => { setTimeout(() => { if (this.activeDdayInput === 'to') this.activeDdayInput = null; }, 200); });
             this.updateDday();
+
+            // 만나이 계산기
+            const birthInput = document.getElementById('age-birth');
+            const ageDateInput = document.getElementById('age-date');
+            birthInput.value = Storage.get('ageBirth', '');
+            ageDateInput.value = Storage.get('ageDate', todayStr);
+            birthInput.addEventListener('input', () => { Storage.set('ageBirth', birthInput.value); this.updateAge(); });
+            ageDateInput.addEventListener('input', () => { Storage.set('ageDate', ageDateInput.value); this.updateAge(); });
+            birthInput.addEventListener('focus', () => { this.activeDdayInput = 'birth'; });
+            ageDateInput.addEventListener('focus', () => { this.activeDdayInput = 'ageDate'; });
+            birthInput.addEventListener('blur', () => { setTimeout(() => { if (this.activeDdayInput === 'birth') this.activeDdayInput = null; }, 200); });
+            ageDateInput.addEventListener('blur', () => { setTimeout(() => { if (this.activeDdayInput === 'ageDate') this.activeDdayInput = null; }, 200); });
+            this.updateAge();
         },
+
+        updateViewButtons() {
+            [1, 2, 3].forEach(m => {
+                const btn = document.getElementById(`view-${m}m`);
+                btn.className = `calendar-view-btn px-2 py-0.5 rounded ${this.viewMode === m ? 'bg-white dark:bg-card-dark shadow-sm font-medium' : 'text-slate-500'}`;
+            });
+        },
+
+        loadHolidays() {
+            const currentYear = this.date.getFullYear();
+            for (let y = currentYear - 1; y <= currentYear + 1; y++) {
+                this.holidays[`${y}-01-01`] = '신정';
+                this.holidays[`${y}-03-01`] = '삼일절';
+                this.holidays[`${y}-05-05`] = '어린이날';
+                this.holidays[`${y}-06-06`] = '현충일';
+                this.holidays[`${y}-08-15`] = '광복절';
+                this.holidays[`${y}-10-03`] = '개천절';
+                this.holidays[`${y}-10-09`] = '한글날';
+                this.holidays[`${y}-12-25`] = '크리스마스';
+            }
+            this.holidays['2025-01-28'] = '설날 연휴'; this.holidays['2025-01-29'] = '설날'; this.holidays['2025-01-30'] = '설날 연휴';
+            this.holidays['2025-05-06'] = '대체공휴일';
+            this.holidays['2025-10-05'] = '추석 연휴'; this.holidays['2025-10-06'] = '추석'; this.holidays['2025-10-07'] = '추석 연해'; this.holidays['2025-10-08'] = '대체공휴일';
+            // 2026년 공휴일
+            this.holidays['2026-02-16'] = '설날 연휴'; this.holidays['2026-02-17'] = '설날'; this.holidays['2026-02-18'] = '설날 연휴';
+            this.holidays['2026-03-02'] = '대체공휴일'; // 삼일절 대체
+            this.holidays['2026-05-24'] = '부처님오신날'; this.holidays['2026-05-25'] = '대체공휴일';
+            this.holidays['2026-08-17'] = '대체공해일'; // 광복절 대체
+            this.holidays['2026-09-24'] = '추석 연휴'; this.holidays['2026-09-25'] = '추석'; this.holidays['2026-09-26'] = '추석 연휴'; this.holidays['2026-09-28'] = '대체공휴일';
+            this.holidays['2026-10-05'] = '대체공휴일'; // 개천절 대체
+            // 2027년 공휴일
+            this.holidays['2027-02-06'] = '설날 연휴'; this.holidays['2027-02-07'] = '설날'; this.holidays['2027-02-08'] = '설날 연휴'; this.holidays['2027-02-09'] = '대체공휴일';
+            this.holidays['2027-05-13'] = '부처님오신날';
+            this.holidays['2027-08-16'] = '대체공휴일'; // 광복절 대체
+            this.holidays['2027-10-11'] = '대체공휴일'; // 한글날 대체
+            this.holidays['2027-10-14'] = '추석 연휴'; this.holidays['2027-10-15'] = '추석'; this.holidays['2027-10-16'] = '추석 연휴';
+        },
+
+        getHoliday(year, month, day) {
+            const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            return this.holidays[key] || null;
+        },
+
         render() {
-            const year = this.date.getFullYear();
-            const month = this.date.getMonth();
-            document.getElementById('calendar-month-year').textContent = `${year}년 ${month + 1}월`;
+            const container = document.getElementById('calendar-container');
+            const today = new Date();
+            const todayMonth = today.getMonth();
+            let html = '';
+            const visibleHolidays = [];
+
+            // 보기 모드에 따라 시작 월 결정
+            let startOffset = 0;
+            if (this.viewMode === 2) startOffset = 0; // 오늘이 있는 달이 위
+            if (this.viewMode === 3) startOffset = -1; // 오늘이 있는 달이 가운데
+
+            for (let m = 0; m < this.viewMode; m++) {
+                const targetDate = new Date(this.date.getFullYear(), this.date.getMonth() + startOffset + m, 1);
+                const year = targetDate.getFullYear();
+                const month = targetDate.getMonth();
+
+                html += this.renderMonth(year, month, today, visibleHolidays, this.viewMode > 1);
+            }
+
+            container.innerHTML = html;
+            document.getElementById('calendar-month-year').textContent = this.viewMode === 1
+                ? `${this.date.getFullYear()}년 ${this.date.getMonth() + 1}월`
+                : `${this.date.getFullYear()}년`;
+
+            // 날짜 클릭 이벤트 (D-Day 및 만나이 입력)
+            container.querySelectorAll('.cal-day').forEach(el => {
+                el.addEventListener('click', () => {
+                    if (this.activeDdayInput) {
+                        const dateStr = el.dataset.date;
+                        let inputId = '';
+                        let storageKey = '';
+                        if (this.activeDdayInput === 'from') { inputId = 'dday-from'; storageKey = 'ddayFrom'; }
+                        else if (this.activeDdayInput === 'to') { inputId = 'dday-to'; storageKey = 'ddayTo'; }
+                        else if (this.activeDdayInput === 'birth') { inputId = 'age-birth'; storageKey = 'ageBirth'; }
+                        else if (this.activeDdayInput === 'ageDate') { inputId = 'age-date'; storageKey = 'ageDate'; }
+
+                        if (inputId) {
+                            const input = document.getElementById(inputId);
+                            input.value = dateStr;
+                            Storage.set(storageKey, dateStr);
+                            this.updateDday();
+                            this.updateAge();
+                        }
+                    }
+                });
+            });
+
+            // 공휴일 목록
+            const holidayList = document.getElementById('holiday-list');
+            holidayList.innerHTML = visibleHolidays.length > 0
+                ? visibleHolidays.map(h => `<span class="text-red-500">${h.month}/${h.day}</span> ${h.name}`).join('&emsp;')
+                : '';
+
+            this.loadHolidays();
+        },
+
+        renderMonth(year, month, today, visibleHolidays, showHeader = false) {
             const firstDay = new Date(year, month, 1).getDay();
             const lastDate = new Date(year, month + 1, 0).getDate();
-            const today = new Date();
-            const grid = document.getElementById('calendar-grid');
-            grid.innerHTML = '';
-            for (let i = 0; i < firstDay; i++) grid.innerHTML += '<div class="p-1 min-h-[40px]"></div>';
+
+            let html = '';
+            if (showHeader) {
+                html += `<div class="text-center text-xs font-semibold text-slate-500 mt-3 mb-1">${year}년 ${month + 1}월</div>`;
+            }
+            html += `<div class="grid grid-cols-7 mb-1 text-[10px]">
+                <span class="text-center text-red-500 font-semibold">일</span>
+                <span class="text-center text-slate-500">월</span>
+                <span class="text-center text-slate-500">화</span>
+                <span class="text-center text-slate-500">수</span>
+                <span class="text-center text-slate-500">목</span>
+                <span class="text-center text-slate-500">금</span>
+                <span class="text-center text-blue-500 font-semibold">토</span>
+            </div>`;
+            html += '<div class="grid grid-cols-7 gap-0.5">';
+
+            for (let i = 0; i < firstDay; i++) html += '<div class="p-1 min-h-[28px]"></div>';
+
             for (let d = 1; d <= lastDate; d++) {
                 const isToday = year === today.getFullYear() && month === today.getMonth() && d === today.getDate();
                 const dayOfWeek = new Date(year, month, d).getDay();
                 const isSunday = dayOfWeek === 0;
-                let cls = 'p-1 text-sm text-center font-medium hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg cursor-pointer ';
-                if (isToday) cls += 'bg-primary text-white font-bold shadow-lg shadow-blue-500/30';
-                else if (isSunday) cls += 'text-red-500';
-                else cls += 'text-slate-900 dark:text-white';
-                grid.innerHTML += `<div class="${cls}">${d}</div>`;
+                const isSaturday = dayOfWeek === 6;
+                const holiday = this.getHoliday(year, month, d);
+                const dateStr = `${year}${String(month + 1).padStart(2, '0')}${String(d).padStart(2, '0')}`;
+
+                if (holiday) visibleHolidays.push({ month: month + 1, day: d, name: holiday });
+
+                let cls = 'cal-day p-1 text-xs text-center font-medium rounded cursor-pointer transition-colors ';
+                if (isToday) {
+                    cls += 'bg-primary text-white font-bold hover:bg-blue-600';
+                } else if (holiday || isSunday) {
+                    cls += 'text-red-500 font-semibold hover:bg-red-50 dark:hover:bg-red-900/20';
+                } else if (isSaturday) {
+                    cls += 'text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20';
+                } else {
+                    cls += 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800';
+                }
+                html += `<div class="${cls}" data-date="${dateStr}" title="${holiday || ''}">${d}</div>`;
             }
+            html += '</div>';
+            return html;
         },
+
         updateDday() {
-            const input = document.getElementById('dday-input').value.replace(/\./g, '-');
-            const target = new Date(input);
+            const fromVal = document.getElementById('dday-from').value;
+            const toVal = document.getElementById('dday-to').value;
             const result = document.getElementById('dday-result');
-            if (isNaN(target.getTime())) { result.textContent = '-'; return; }
-            const today = new Date(); today.setHours(0, 0, 0, 0); target.setHours(0, 0, 0, 0);
-            const diff = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+
+            const parseDate = (str) => {
+                if (str.length !== 8) return null;
+                const y = parseInt(str.substring(0, 4));
+                const m = parseInt(str.substring(4, 6)) - 1;
+                const d = parseInt(str.substring(6, 8));
+                const date = new Date(y, m, d);
+                return isNaN(date.getTime()) ? null : date;
+            };
+
+            const fromDate = parseDate(fromVal);
+            const toDate = parseDate(toVal);
+
+            if (!fromDate && !toDate) { result.textContent = '-'; return; }
+
+            if (fromDate && !toDate) {
+                const today = new Date(); today.setHours(0, 0, 0, 0); fromDate.setHours(0, 0, 0, 0);
+                const diff = Math.ceil((today - fromDate) / (1000 * 60 * 60 * 24));
+                result.textContent = diff === 0 ? 'D-Day' : diff > 0 ? `D+${diff}` : `D${diff}`;
+                return;
+            }
+
+            if (!fromDate && toDate) {
+                const today = new Date(); today.setHours(0, 0, 0, 0); toDate.setHours(0, 0, 0, 0);
+                const diff = Math.ceil((toDate - today) / (1000 * 60 * 60 * 24));
+                result.textContent = diff === 0 ? 'D-Day' : diff > 0 ? `D-${diff}` : `D+${Math.abs(diff)}`;
+                return;
+            }
+
+            fromDate.setHours(0, 0, 0, 0); toDate.setHours(0, 0, 0, 0);
+            const diff = Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24));
             result.textContent = diff === 0 ? 'D-Day' : diff > 0 ? `D-${diff}` : `D+${Math.abs(diff)}`;
+        },
+
+        updateAge() {
+            const birthVal = document.getElementById('age-birth').value;
+            const dateVal = document.getElementById('age-date').value;
+            const result = document.getElementById('age-result');
+
+            const parseDate = (str) => {
+                if (str.length !== 8) return null;
+                const y = parseInt(str.substring(0, 4));
+                const m = parseInt(str.substring(4, 6)) - 1;
+                const d = parseInt(str.substring(6, 8));
+                const date = new Date(y, m, d);
+                return isNaN(date.getTime()) ? null : date;
+            };
+
+            const birthDate = parseDate(birthVal);
+            const targetDate = parseDate(dateVal);
+
+            if (!birthDate || !targetDate) { result.textContent = '-'; return; }
+
+            let age = targetDate.getFullYear() - birthDate.getFullYear();
+            const m = targetDate.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && targetDate.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            result.textContent = age >= 0 ? `만 ${age}세` : '-';
         }
     };
 
