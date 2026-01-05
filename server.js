@@ -66,13 +66,22 @@ const server = http.createServer(async (req, res) => {
 
         try {
             const apiUrl = `https://stdict.korean.go.kr/api/search.do?key=${API_KEY}&q=${encodeURIComponent(query)}&req_type=json&num=10&advanced=n`;
+            console.log(`[Proxy] Fetching: ${apiUrl.replace(API_KEY, 'HIDDEN_KEY')}`);
 
             const apiResponse = await fetch(apiUrl);
+
+            if (!apiResponse.ok) {
+                console.error(`[Proxy] API Fetch Failed: ${apiResponse.status}`);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: { code: 'FETCH_ERROR', message: `API 서버 응답 오류 (${apiResponse.status})` } }));
+                return;
+            }
+
             const responseText = await apiResponse.text();
 
             // 빈 응답 처리
             if (!responseText || responseText.trim() === '') {
-                console.log('API returned empty response');
+                console.log('[Proxy] API returned empty response');
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({ channel: { total: 0, item: [] } }));
                 return;
@@ -80,12 +89,12 @@ const server = http.createServer(async (req, res) => {
 
             // XML 응답 체크
             if (responseText.trim().startsWith('<?xml') || responseText.trim().startsWith('<')) {
-                console.error('API returned XML instead of JSON:', responseText.substring(0, 100));
+                console.error('[Proxy] API returned XML instead of JSON');
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({
                     error: {
                         code: 'XML_RESPONSE',
-                        message: 'API가 일시적으로 XML 형식을 반환했습니다. 잠시 후 다시 시도해주세요.'
+                        message: 'API가 일시적으로 XML 형식을 반환했습니다.'
                     }
                 }));
                 return;
@@ -93,15 +102,16 @@ const server = http.createServer(async (req, res) => {
 
             try {
                 const data = JSON.parse(responseText);
+                console.log(`[Proxy] Success: Found ${data.channel?.total || 0} items`);
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify(data));
             } catch (parseError) {
-                console.error('JSON Parse Error:', parseError.message, 'Response:', responseText.substring(0, 100));
+                console.error('[Proxy] JSON Parse Error:', parseError.message);
                 res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: { code: 'PARSE_ERROR', message: 'API 응답 형식이 올바르지 않습니다.' } }));
+                res.end(JSON.stringify({ error: { code: 'PARSE_ERROR', message: 'API 응답 데이터를 읽을 수 없습니다.' } }));
             }
         } catch (error) {
-            console.error('API Error:', error);
+            console.error('[Proxy] Global Error:', error);
             res.writeHead(500, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: { code: 'API_ERROR', message: error.message } }));
         }
