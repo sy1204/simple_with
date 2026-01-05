@@ -1563,14 +1563,22 @@
             this.showLoading();
 
             try {
-                // Vercel API 엔드포인트 호출 (로컬 개발 시에도 동일)
+                // Vercel API 엔드포인트 호출
                 const response = await fetch(`/api/dictionary?q=${encodeURIComponent(query)}`);
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+                // 에러 발생 시 본문을 먼저 읽어보려고 시도
+                let data;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    data = null;
                 }
 
-                const data = await response.json();
+                if (!response.ok) {
+                    // 서버 응답이 에러(500 등)인 경우 데이터의 메시지 또는 상태 코드 표시
+                    const errorMsg = data?.error?.message || `서버 오류가 발생했습니다 (HTTP ${response.status})`;
+                    throw new Error(errorMsg);
+                }
 
                 if (data.error) {
                     this.showMessage(data.error.message || '검색 중 오류가 발생했습니다.', 'error');

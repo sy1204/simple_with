@@ -82,8 +82,13 @@ const server = http.createServer(async (req, res) => {
 
             if (!apiResponse.ok) {
                 console.error(`[Proxy] API Fetch Failed: ${apiResponse.status}`);
-                res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: { code: 'FETCH_ERROR', message: `API 서버 응답 오류 (${apiResponse.status})` } }));
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({
+                    error: {
+                        code: 'API_FETCH_FAILED',
+                        message: `국립국어원 API 연결 실패 (상태 코드: ${apiResponse.status})`
+                    }
+                }));
                 return;
             }
 
@@ -104,7 +109,7 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify({
                     error: {
                         code: 'XML_RESPONSE',
-                        message: 'API가 일시적으로 XML 형식을 반환했습니다.'
+                        message: '사전 서비스가 일시적으로 점검 중이거나 XML 응답을 반환했습니다.'
                     }
                 }));
                 return;
@@ -117,13 +122,23 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify(data));
             } catch (parseError) {
                 console.error('[Proxy] JSON Parse Error:', parseError.message);
-                res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: { code: 'PARSE_ERROR', message: 'API 응답 데이터를 읽을 수 없습니다.' } }));
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({
+                    error: {
+                        code: 'PARSE_ERROR',
+                        message: 'API 응답 데이터를 파싱할 수 없습니다.'
+                    }
+                }));
             }
         } catch (error) {
             console.error('[Proxy] Global Error:', error);
-            res.writeHead(500, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: { code: 'API_ERROR', message: error.message } }));
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({
+                error: {
+                    code: 'SERVER_ERROR',
+                    message: error.message
+                }
+            }));
         }
         return;
     }

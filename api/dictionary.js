@@ -18,23 +18,21 @@ module.exports = async function handler(req, res) {
     const API_KEY = process.env.KOREAN_DICT_API_KEY;
 
     if (!API_KEY) {
-        res.status(500).json({
+        return res.status(200).json({
             error: {
                 code: 'CONFIG_ERROR',
-                message: 'API 키가 설정되지 않았습니다.'
+                message: 'Vercel에 API 키(KOREAN_DICT_API_KEY)가 설정되지 않았습니다. 대시보드 설정을 확인해주세요.'
             }
         });
-        return;
     }
 
     if (!q) {
-        res.status(400).json({
+        return res.status(400).json({
             error: {
                 code: 'MISSING_PARAM',
                 message: '검색어(q)가 필요합니다.'
             }
         });
-        return;
     }
 
     try {
@@ -48,19 +46,28 @@ module.exports = async function handler(req, res) {
         const apiUrl = `https://stdict.korean.go.kr/api/search.do?${params.toString()}`;
 
         const response = await fetch(apiUrl);
+
+        if (!response.ok) {
+            return res.status(200).json({
+                error: {
+                    code: 'API_FETCH_FAILED',
+                    message: `국립국어원 API 연결 실패 (상태 코드: ${response.status})`
+                }
+            });
+        }
+
         const responseText = await response.text();
 
-        // 빈 응답 처리
+        // 빈 응답 또는 XML 처리
         if (!responseText || responseText.trim() === '') {
             return res.status(200).json({ channel: { total: 0, item: [] } });
         }
 
-        // XML 응답 체크
         if (responseText.trim().startsWith('<?xml') || responseText.trim().startsWith('<')) {
             return res.status(200).json({
                 error: {
                     code: 'XML_RESPONSE',
-                    message: 'API가 일시적으로 XML 형식을 반환했습니다. 잠시 후 다시 시도해주세요.'
+                    message: '사전 서비스가 일시적으로 점검 중이거나 XML 응답을 반환했습니다.'
                 }
             });
         }
@@ -69,11 +76,10 @@ module.exports = async function handler(req, res) {
             const data = JSON.parse(responseText);
             res.status(200).json(data);
         } catch (parseError) {
-            console.error('JSON Parse Error:', parseError.message);
-            res.status(500).json({
+            res.status(200).json({
                 error: {
                     code: 'PARSE_ERROR',
-                    message: 'API 응답 형식이 올바르지 않습니다.'
+                    message: 'API 응답 데이터를 파싱할 수 없습니다.'
                 }
             });
         }
