@@ -204,6 +204,10 @@
                                 href="#memo"><span
                                     class="material-symbols-outlined text-[16px] text-slate-400">edit_note</span>메모</a>
                         </li>
+                        <li><a class="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white py-1.5"
+                                href="#dictionary"><span
+                                    class="material-symbols-outlined text-[16px] text-slate-400">menu_book</span>사전</a>
+                        </li>
                     </ul>
                 </nav>
             </header>
@@ -408,6 +412,68 @@
                         <textarea id="memo-text"
                             class="w-full flex-1 bg-transparent border-none text-sm text-slate-600 dark:text-slate-300 placeholder-slate-400 resize-none focus:ring-0 p-0 leading-relaxed min-h-[120px]"
                             placeholder="메모를 입력하세요..."></textarea>
+                    </div>
+
+                    <!-- Dictionary Card -->
+                    <div id="dictionary"
+                        class="card group relative col-span-1 lg:col-span-2 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
+                        <!-- Header -->
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-bold flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary">menu_book</span>사전
+                            </h3>
+                            <div class="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+                                <button id="dict-tab-korean"
+                                    class="dict-tab px-3 py-1 text-xs font-bold bg-white dark:bg-card-dark rounded shadow-sm">국어</button>
+                                <button id="dict-tab-english"
+                                    class="dict-tab px-3 py-1 text-xs font-medium text-slate-400 cursor-not-allowed"
+                                    disabled title="영어 사전은 준비 중입니다">영어</button>
+                            </div>
+                        </div>
+
+                        <!-- Search Box with Navigation -->
+                        <div class="flex gap-2 mb-4">
+                            <!-- History Navigation -->
+                            <div class="flex gap-1">
+                                <button id="dict-nav-prev"
+                                    class="p-2 text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                    title="이전 검색어" disabled>
+                                    <span class="material-symbols-outlined text-lg">arrow_back</span>
+                                </button>
+                                <button id="dict-nav-next"
+                                    class="p-2 text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                    title="다음 검색어" disabled>
+                                    <span class="material-symbols-outlined text-lg">arrow_forward</span>
+                                </button>
+                            </div>
+                            <!-- Search Input (supports drag and drop) -->
+                            <input id="dict-search-input" type="text" placeholder="검색어를 입력하거나 드래그해서 놓으세요..."
+                                class="flex-1 bg-background-light dark:bg-[#111822] border-2 border-transparent rounded-lg text-sm px-4 py-2.5 focus:ring-2 focus:ring-primary/50 transition-colors" />
+                            <button id="dict-search-btn"
+                                class="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-1 transition-colors">
+                                <span class="material-symbols-outlined text-lg">search</span>
+                            </button>
+                        </div>
+
+                        <!-- Results Area -->
+                        <div id="dict-results"
+                            class="flex-1 min-h-[300px] bg-slate-50 dark:bg-slate-800/30 rounded-lg p-4 overflow-y-auto">
+                            <div class="flex flex-col items-center justify-center h-full text-slate-400">
+                                <span class="material-symbols-outlined text-4xl mb-2">search</span>
+                                <p class="text-sm">검색어를 입력하고 검색 버튼을 누르세요</p>
+                            </div>
+                        </div>
+
+                        <!-- Footer Info -->
+                        <div
+                            class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs text-slate-400">
+                            <span>출처: 국립국어원 표준국어대사전</span>
+                            <a href="https://stdict.korean.go.kr" target="_blank" rel="noopener"
+                                class="flex items-center gap-1 hover:text-primary transition-colors">
+                                <span class="material-symbols-outlined text-sm">open_in_new</span>
+                                사전 사이트 방문
+                            </a>
+                        </div>
                     </div>
 
                 </div>

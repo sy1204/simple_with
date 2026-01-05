@@ -1,0 +1,22 @@
+{
+    "name": "workdesk",
+    "version": "1.0.0",
+    "description": "직장인 올인원 대시보드 - 워크데스크",
+    "main": "index.html",
+    "scripts": {
+        "dev": "node server.js",
+        "dev:vercel": "vercel dev",
+        "build": "echo 'No build step required'",
+        "start": "node server.js"
+    },
+    "keywords": [
+        "dashboard",
+        "productivity",
+        "dictionary"
+    ],
+    "author": "",
+    "license": "MIT",
+    "devDependencies": {
+        "vercel": "^32.0.0"
+    }
+}

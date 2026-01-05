@@ -1393,6 +1393,321 @@
         }
     };
 
+    // ===== 사전 (Dictionary) =====
+    const Dictionary = {
+        currentTab: 'korean', // 'korean' or 'english'
+        isLoading: false,
+        lastQuery: '',
+        searchHistory: Storage.get('dictHistory', []),
+        historyIndex: -1, // 현재 히스토리 위치 (-1 = 새 검색)
+
+        init() {
+            this.bindEvents();
+            this.updateTabButtons();
+            this.updateNavButtons();
+        },
+
+        bindEvents() {
+            // 탭 버튼
+            const koreanTab = document.getElementById('dict-tab-korean');
+
+            if (koreanTab) {
+                koreanTab.addEventListener('click', () => {
+                    this.currentTab = 'korean';
+                    this.updateTabButtons();
+                });
+            }
+
+            // 검색 버튼
+            const searchBtn = document.getElementById('dict-search-btn');
+            const searchInput = document.getElementById('dict-search-input');
+
+            if (searchBtn) {
+                searchBtn.addEventListener('click', () => this.search());
+            }
+
+            if (searchInput) {
+                searchInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.search();
+                });
+
+                // 드래그 앤 드롭 이벤트
+                searchInput.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    searchInput.classList.add('border-primary', 'bg-primary/5');
+                });
+
+                searchInput.addEventListener('dragleave', (e) => {
+                    e.preventDefault();
+                    searchInput.classList.remove('border-primary', 'bg-primary/5');
+                });
+
+                searchInput.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    searchInput.classList.remove('border-primary', 'bg-primary/5');
+
+                    // 드래그된 텍스트 가져오기
+                    const droppedText = e.dataTransfer.getData('text/plain').trim();
+                    if (droppedText) {
+                        searchInput.value = droppedText;
+                        this.search();
+                    }
+                });
+            }
+
+            // 히스토리 네비게이션 버튼
+            const prevBtn = document.getElementById('dict-nav-prev');
+            const nextBtn = document.getElementById('dict-nav-next');
+
+            if (prevBtn) {
+                prevBtn.addEventListener('click', () => this.navigateHistory('prev'));
+            }
+
+            if (nextBtn) {
+                nextBtn.addEventListener('click', () => this.navigateHistory('next'));
+            }
+        },
+
+        updateTabButtons() {
+            const koreanTab = document.getElementById('dict-tab-korean');
+
+            if (koreanTab) {
+                koreanTab.className = this.currentTab === 'korean'
+                    ? 'dict-tab px-3 py-1 text-xs font-bold bg-white dark:bg-card-dark rounded shadow-sm'
+                    : 'dict-tab px-3 py-1 text-xs font-medium text-slate-500';
+            }
+        },
+
+        updateNavButtons() {
+            const prevBtn = document.getElementById('dict-nav-prev');
+            const nextBtn = document.getElementById('dict-nav-next');
+
+            if (prevBtn) {
+                // 이전 버튼: 히스토리에서 더 이전으로 갈 수 있을 때 활성화
+                prevBtn.disabled = this.historyIndex >= this.searchHistory.length - 1;
+            }
+
+            if (nextBtn) {
+                // 다음 버튼: 히스토리에서 더 앞으로 갈 수 있을 때 활성화
+                nextBtn.disabled = this.historyIndex <= 0;
+            }
+        },
+
+        navigateHistory(direction) {
+            if (direction === 'prev') {
+                if (this.historyIndex < this.searchHistory.length - 1) {
+                    this.historyIndex++;
+                }
+            } else if (direction === 'next') {
+                if (this.historyIndex > 0) {
+                    this.historyIndex--;
+                }
+            }
+
+            const query = this.searchHistory[this.historyIndex];
+            if (query) {
+                const input = document.getElementById('dict-search-input');
+                if (input) {
+                    input.value = query;
+                }
+                this.searchWithoutHistory(query);
+            }
+        },
+
+        // 히스토리에 추가하지 않고 검색 (네비게이션용)
+        async searchWithoutHistory(query) {
+            if (!query || this.isLoading) return;
+
+            this.isLoading = true;
+            this.lastQuery = query;
+            this.showLoading();
+
+            try {
+                const response = await fetch(`/api/dictionary?q=${encodeURIComponent(query)}`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.error) {
+                    this.showMessage(data.error.message || '검색 중 오류가 발생했습니다.', 'error');
+                    return;
+                }
+
+                this.renderResults(data, query);
+                this.updateNavButtons();
+
+            } catch (error) {
+                console.error('Dictionary search error:', error);
+                this.showMessage('검색 중 오류가 발생했습니다: ' + error.message, 'error');
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        async search() {
+            const input = document.getElementById('dict-search-input');
+            const query = input?.value.trim();
+
+            if (!query) {
+                this.showMessage('검색어를 입력해주세요.', 'warning');
+                return;
+            }
+
+            if (this.isLoading) return;
+
+            this.isLoading = true;
+            this.lastQuery = query;
+            this.showLoading();
+
+            try {
+                // Vercel API 엔드포인트 호출 (로컬 개발 시에도 동일)
+                const response = await fetch(`/api/dictionary?q=${encodeURIComponent(query)}`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.error) {
+                    this.showMessage(data.error.message || '검색 중 오류가 발생했습니다.', 'error');
+                    return;
+                }
+
+                this.renderResults(data, query);
+                this.addToHistory(query);
+
+            } catch (error) {
+                console.error('Dictionary search error:', error);
+
+                // 로컬 개발 시 API가 없을 경우 안내 메시지
+                if (error.message.includes('Failed to fetch') || error.message.includes('404')) {
+                    this.showMessage(
+                        '로컬 환경에서는 API 서버가 필요합니다.<br>' +
+                        '<code>vercel dev</code> 명령으로 실행하거나<br>' +
+                        'Vercel에 배포 후 사용해주세요.',
+                        'info'
+                    );
+                } else {
+                    this.showMessage('검색 중 오류가 발생했습니다: ' + error.message, 'error');
+                }
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+
+        renderResults(data, query) {
+            const container = document.getElementById('dict-results');
+            if (!container) return;
+
+            const items = data.channel?.item;
+            const total = data.channel?.total || 0;
+
+            if (!items || items.length === 0) {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full text-slate-400">
+                        <span class="material-symbols-outlined text-4xl mb-2">search_off</span>
+                        <p class="text-sm">'${this.escapeHtml(query)}'에 대한 검색 결과가 없습니다.</p>
+                    </div>`;
+                return;
+            }
+
+            let html = `
+                <div class="mb-3 flex items-center justify-between">
+                    <span class="text-xs text-slate-500">총 <strong class="text-primary">${total}</strong>개의 결과</span>
+                </div>
+                <div class="space-y-2">`;
+
+            items.forEach(item => {
+                const word = item.word || '';
+                const pos = item.pos || '';
+                const definition = item.sense?.definition || '';
+                const link = item.sense?.link || '';
+                const type = item.sense?.type || '';
+                const supNo = item.sup_no ? `<sup class="text-slate-400 text-[10px]">${item.sup_no}</sup>` : '';
+
+                html += `
+                    <div class="bg-white dark:bg-card-dark rounded-lg p-3 border border-slate-100 dark:border-slate-700 hover:border-primary/30 transition-colors">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-1.5 mb-1 flex-wrap">
+                                    <span class="text-base font-bold text-slate-800 dark:text-white">${this.escapeHtml(word)}${supNo}</span>
+                                    ${pos ? `<span class="px-1.5 py-0.5 text-[10px] font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded">${this.escapeHtml(pos)}</span>` : ''}
+                                    ${type && type !== '일반어' ? `<span class="px-1.5 py-0.5 text-[10px] font-medium bg-slate-100 dark:bg-slate-700 text-slate-500 rounded">${this.escapeHtml(type)}</span>` : ''}
+                                </div>
+                                <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">${this.escapeHtml(definition)}</p>
+                            </div>
+                            ${link ? `
+                                <a href="${link}" target="_blank" rel="noopener" class="shrink-0 p-1.5 text-slate-400 hover:text-primary transition-colors" title="표준국어대사전에서 보기">
+                                    <span class="material-symbols-outlined text-lg">open_in_new</span>
+                                </a>
+                            ` : ''}
+                        </div>
+                    </div>`;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+        },
+
+        showLoading() {
+            const container = document.getElementById('dict-results');
+            if (!container) return;
+
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full text-slate-400">
+                    <div class="animate-spin mb-3">
+                        <span class="material-symbols-outlined text-4xl text-primary">progress_activity</span>
+                    </div>
+                    <p class="text-sm">검색 중...</p>
+                </div>`;
+        },
+
+        showMessage(message, type = 'info') {
+            const container = document.getElementById('dict-results');
+            if (!container) return;
+
+            const icons = {
+                info: 'info',
+                warning: 'warning',
+                error: 'error',
+                success: 'check_circle'
+            };
+            const colors = {
+                info: 'text-blue-500',
+                warning: 'text-amber-500',
+                error: 'text-red-500',
+                success: 'text-green-500'
+            };
+
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full text-slate-400">
+                    <span class="material-symbols-outlined text-4xl mb-2 ${colors[type]}">${icons[type]}</span>
+                    <p class="text-sm text-center">${message}</p>
+                </div>`;
+        },
+
+        addToHistory(query) {
+            this.searchHistory = this.searchHistory.filter(q => q !== query);
+            this.searchHistory.unshift(query);
+            if (this.searchHistory.length > 10) this.searchHistory.pop();
+            Storage.set('dictHistory', this.searchHistory);
+            this.historyIndex = 0; // 새 검색은 히스토리 첫 번째 위치
+            this.updateNavButtons();
+        },
+
+        escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    };
+
     // ===== 초기화 =====
     document.addEventListener('DOMContentLoaded', () => {
         Theme.init();
@@ -1403,5 +1718,6 @@
         Finance.init();
         Converter.init();
         Memo.init();
+        Dictionary.init();
     });
 })();
