@@ -56,7 +56,7 @@ async function handleKoreanToEnglish(query, clientId, clientSecret, res) {
         return res.status(200).json({
             error: {
                 code: 'CONFIG_ERROR',
-                message: '한영사전을 사용하려면 네이버 API 키가 필요합니다.'
+                message: '한영사전을 사용하려면 Vercel에 NAVER_CLIENT_ID와 NAVER_CLIENT_SECRET 환경변수를 설정해주세요.'
             }
         });
     }
@@ -73,10 +73,19 @@ async function handleKoreanToEnglish(query, clientId, clientSecret, res) {
         });
 
         if (!translateResponse.ok) {
+            const status = translateResponse.status;
+            let errorMsg = `파파고 API 연결 실패 (상태 코드: ${status})`;
+            if (status === 401) {
+                errorMsg = '파파고 API 인증 실패 - NAVER_CLIENT_ID/SECRET이 올바른지 확인해주세요.';
+            } else if (status === 404) {
+                errorMsg = '파파고 API를 찾을 수 없습니다. 네이버 개발자 센터에서 "Papago 번역" API를 활성화해주세요.';
+            } else if (status === 429) {
+                errorMsg = '파파고 API 호출 한도를 초과했습니다. 잠시 후 다시 시도해주세요.';
+            }
             return res.status(200).json({
                 error: {
                     code: 'API_FETCH_FAILED',
-                    message: `파파고 API 연결 실패 (상태 코드: ${translateResponse.status})`
+                    message: errorMsg
                 }
             });
         }
@@ -154,6 +163,7 @@ async function handleEnglishToKorean(query, clientId, clientSecret, res) {
     
     let dictData = null;
     let koreanMeaning = '';
+    let papagoError = null;
 
     if (dictResponse.ok) {
         dictData = await dictResponse.json();
@@ -175,10 +185,20 @@ async function handleEnglishToKorean(query, clientId, clientSecret, res) {
             if (translateResponse.ok) {
                 const translateData = await translateResponse.json();
                 koreanMeaning = translateData.message?.result?.translatedText || '';
+            } else {
+                const status = translateResponse.status;
+                if (status === 404) {
+                    papagoError = '네이버 개발자 센터에서 "Papago 번역" API를 활성화해주세요.';
+                } else if (status === 401) {
+                    papagoError = 'NAVER API 키를 확인해주세요.';
+                }
             }
         } catch (e) {
             console.error('Papago translation error:', e);
+            papagoError = '파파고 연결 오류';
         }
+    } else {
+        papagoError = 'Vercel에 NAVER_CLIENT_ID/SECRET 환경변수가 필요합니다.';
     }
 
     // 3. 응답 데이터 구성
@@ -238,7 +258,8 @@ async function handleEnglishToKorean(query, clientId, clientSecret, res) {
         audio: audioUrl,
         meanings: meanings,
         source: 'freedictionary',
-        direction: 'en→ko'
+        direction: 'en→ko',
+        papagoError: papagoError
     };
 
     res.status(200).json(result);

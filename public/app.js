@@ -1591,7 +1591,7 @@
                 return;
             }
 
-            const items = data.channel?.item;
+            let items = data.channel?.item;
             if (!items || items.length === 0) {
                 container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-400">
                     <span class="material-symbols-outlined text-4xl mb-2">search_off</span>
@@ -1600,18 +1600,35 @@
                 return;
             }
 
+            // 정확히 일치하는 결과를 상위로 정렬
+            const queryLower = query.toLowerCase().replace(/\s/g, '');
+            items = [...items].sort((a, b) => {
+                const aWord = (a.word || '').toLowerCase().replace(/\s/g, '').replace(/-/g, '');
+                const bWord = (b.word || '').toLowerCase().replace(/\s/g, '').replace(/-/g, '');
+                const aExact = aWord === queryLower ? 0 : 1;
+                const bExact = bWord === queryLower ? 0 : 1;
+                if (aExact !== bExact) return aExact - bExact;
+                // 그 다음은 시작하는 단어 우선
+                const aStarts = aWord.startsWith(queryLower) ? 0 : 1;
+                const bStarts = bWord.startsWith(queryLower) ? 0 : 1;
+                return aStarts - bStarts;
+            });
+
             let html = `<div class="mb-3"><span class="text-xs text-slate-500">총 <strong class="text-primary">${data.channel?.total || 0}</strong>개</span></div><div class="space-y-2">`;
             items.forEach(item => {
                 const word = item.word || '';
                 const pos = item.pos || '';
                 const def = item.sense?.definition || '';
                 const link = item.sense?.link || '';
-                html += `<div class="bg-white dark:bg-card-dark rounded-lg p-3 border border-slate-100 dark:border-slate-700 hover:border-primary/30 transition-colors">
+                // 정확히 일치하는 단어 하이라이트
+                const isExact = word.toLowerCase().replace(/\s/g, '').replace(/-/g, '') === queryLower;
+                html += `<div class="bg-white dark:bg-card-dark rounded-lg p-3 border ${isExact ? 'border-primary/50 bg-primary/5' : 'border-slate-100 dark:border-slate-700'} hover:border-primary/30 transition-colors">
                     <div class="flex items-start justify-between gap-2">
                         <div class="flex-1">
                             <div class="flex items-center gap-1.5 mb-1 flex-wrap">
                                 <span class="text-base font-bold">${this.escapeHtml(word)}</span>
                                 ${pos ? `<span class="px-1.5 py-0.5 text-[10px] font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 rounded">${this.escapeHtml(pos)}</span>` : ''}
+                                ${isExact ? '<span class="px-1.5 py-0.5 text-[10px] font-medium bg-primary/20 text-primary rounded">일치</span>' : ''}
                             </div>
                             <p class="text-sm text-slate-600 dark:text-slate-300">${this.escapeHtml(def)}</p>
                         </div>
@@ -1640,20 +1657,50 @@
             
             // 단어 헤더
             html += `<div class="bg-white dark:bg-card-dark rounded-lg p-4 border border-slate-100 dark:border-slate-700">
-                <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center gap-3">
                         <span class="text-2xl font-bold">${this.escapeHtml(data.word)}</span>
                         ${data.phonetic ? `<span class="text-sm text-slate-500">${this.escapeHtml(data.phonetic)}</span>` : ''}
                         ${data.audio ? `<button onclick="new Audio('${data.audio}').play()" class="p-1 text-primary hover:bg-primary/10 rounded-full"><span class="material-symbols-outlined text-lg">volume_up</span></button>` : ''}
                     </div>
                     ${directionBadge}
-                </div>
-                ${isKoToEn && data.englishMeaning ? `<div class="text-lg text-primary font-medium">${this.escapeHtml(data.englishMeaning)}</div>` : ''}
-                ${!isKoToEn && data.koreanMeaning ? `<div class="text-lg text-primary font-medium">${this.escapeHtml(data.koreanMeaning)}</div>` : ''}
-            </div>`;
+                </div>`;
+            
+            // 한글/영어 뜻 (메인으로 크게 표시)
+            if (isKoToEn && data.englishMeaning) {
+                html += `<div class="text-xl text-primary font-bold border-l-4 border-primary pl-3">${this.escapeHtml(data.englishMeaning)}</div>`;
+            } else if (!isKoToEn && data.koreanMeaning) {
+                html += `<div class="text-xl text-primary font-bold border-l-4 border-primary pl-3">${this.escapeHtml(data.koreanMeaning)}</div>`;
+            } else if (!isKoToEn && data.papagoError) {
+                html += `<div class="text-sm text-amber-600 bg-amber-50 dark:bg-amber-900/20 p-2 rounded flex items-center gap-2">
+                    <span class="material-symbols-outlined text-lg">warning</span>
+                    ${this.escapeHtml(data.papagoError)}
+                </div>`;
+            } else if (!isKoToEn) {
+                html += `<div class="text-sm text-amber-600 bg-amber-50 dark:bg-amber-900/20 p-2 rounded">한글 뜻을 가져오려면 파파고 API가 필요합니다.</div>`;
+            }
+            html += `</div>`;
 
-            // 의미들
-            if (data.meanings && data.meanings.length > 0) {
+            // 영영 정의 (보조 정보로 축소 표시)
+            if (data.meanings && data.meanings.length > 0 && !isKoToEn) {
+                html += `<details class="bg-slate-50 dark:bg-slate-800/50 rounded-lg overflow-hidden">
+                    <summary class="p-3 cursor-pointer text-xs font-semibold text-slate-500 hover:text-slate-700 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">expand_more</span>
+                        영영 정의 보기
+                    </summary>
+                    <div class="px-3 pb-3 space-y-2">`;
+                data.meanings.forEach(meaning => {
+                    html += `<div class="text-xs">
+                        <span class="font-semibold text-primary">${this.escapeHtml(meaning.partOfSpeech)}</span>
+                        <ul class="mt-1 space-y-1 text-slate-600 dark:text-slate-400">`;
+                    meaning.definitions.slice(0, 2).forEach((def, i) => {
+                        html += `<li>${i + 1}. ${this.escapeHtml(def.definition)}</li>`;
+                    });
+                    html += `</ul></div>`;
+                });
+                html += `</div></details>`;
+            } else if (data.meanings && data.meanings.length > 0 && isKoToEn) {
+                // 한영일 때는 영어 정의를 펼쳐서 보여줌
                 data.meanings.forEach(meaning => {
                     html += `<div class="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3">
                         <div class="text-xs font-semibold text-primary mb-2">${this.escapeHtml(meaning.partOfSpeech)}</div>
@@ -1687,12 +1734,14 @@
                             <span class="material-symbols-outlined text-sm">open_in_new</span>새 탭에서 열기
                         </a>
                     </div>
-                    <iframe 
-                        src="${searchUrl}" 
-                        class="flex-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white"
-                        style="min-height: 400px;"
-                        sandbox="allow-scripts allow-same-origin allow-popups"
-                    ></iframe>
+                    <div class="flex-1 relative rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden" style="min-height: 400px;">
+                        <iframe 
+                            src="${searchUrl}" 
+                            class="absolute inset-0 w-full h-full bg-white origin-top-left"
+                            style="transform: scale(0.85); width: 117.6%; height: 117.6%;"
+                            sandbox="allow-scripts allow-same-origin allow-popups"
+                        ></iframe>
+                    </div>
                 </div>`;
         },
 
