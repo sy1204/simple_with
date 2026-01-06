@@ -2389,20 +2389,18 @@
             </div>`;
 
             try {
-                // 기본 날씨 + 생활정보 동시 요청
-                const [currentRes, forecastRes, midRes, airRes, sunRes] = await Promise.all([
+                // 기본 날씨 + 미세먼지 동시 요청
+                const [currentRes, forecastRes, midRes, airRes] = await Promise.all([
                     fetch(`/api/weather?nx=${loc.nx}&ny=${loc.ny}&type=ultra`),
                     fetch(`/api/weather?nx=${loc.nx}&ny=${loc.ny}&type=short`),
                     fetch(`/api/midforecast?regId=${regionCode.regId}&stnId=${regionCode.stnId}`),
-                    fetch(`/api/airquality?sidoName=${encodeURIComponent(areaInfo.sidoName)}`),
-                    fetch(`/api/sunriseset?locdate=${today}&location=${encodeURIComponent(areaInfo.location)}`)
+                    fetch(`/api/airquality?sidoName=${encodeURIComponent(areaInfo.sidoName)}`)
                 ]);
 
                 const currentData = await currentRes.json();
                 const forecastData = await forecastRes.json();
                 const midData = await midRes.json();
                 const airData = await airRes.json();
-                const sunData = await sunRes.json();
 
                 if (currentData.error) {
                     this.showError(currentData.error.message);
@@ -2423,18 +2421,14 @@
                 // 미세먼지 파싱
                 this.airQuality = this.parseAirQuality(airData);
                 
-                // 일출/일몰 파싱
-                this.sunRiseSet = this.parseSunRiseSet(sunData);
-
-                // 생활기상지수 요청 (별도로 - 계절에 따라 다른 지수)
-                await this.loadLivingIndex(areaInfo.areaNo, today + currentHour);
+                // 일출/일몰 계산 (서울 기준, 대한민국 평균)
+                this.sunRiseSet = this.calcSunRiseSet();
 
                 console.log('[Weather] All data loaded:', {
                     shortDays: this.forecast.daily?.length || 0,
                     midDays: this.midForecast?.length || 0,
                     airQuality: this.airQuality ? 'OK' : 'N/A',
-                    sunRiseSet: this.sunRiseSet ? 'OK' : 'N/A',
-                    livingIndex: this.livingIndex ? 'OK' : 'N/A'
+                    sunRiseSet: this.sunRiseSet ? 'OK' : 'N/A'
                 });
                 
                 this.render();
@@ -2444,45 +2438,34 @@
             }
         },
 
-        // 생활기상지수 로드 (계절에 따라 다른 지수 요청)
-        async loadLivingIndex(areaNo, time) {
-            const month = new Date().getMonth() + 1;
-            const indices = {};
+        // 일출/일몰 시간 계산 (서울 기준, 위도 37.5도)
+        calcSunRiseSet() {
+            const now = new Date();
+            const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
             
-            // time은 YYYYMMDDHH 형식 (예: 2026010606)
-            // 06시 또는 18시로 맞춰야 함 (생활지수 발표 시간)
-            const baseTime = time.slice(0, 8) + '06'; // 06시 기준
-            console.log('[Weather] Living index request - areaNo:', areaNo, 'time:', baseTime);
-
-            try {
-                // 자외선 지수 (연중)
-                const uvRes = await fetch(`/api/livingindex?type=UV&areaNo=${areaNo}&time=${baseTime}`);
-                const uvData = await uvRes.json();
-                console.log('[Weather] UV response:', JSON.stringify(uvData).substring(0, 300));
-                if (!uvData.error && uvData.response?.body?.items?.item) {
-                    const items = uvData.response.body.items.item;
-                    const item = Array.isArray(items) ? items[0] : items;
-                    if (item) indices.UV = item.h0 || item.h3 || item.today || item.h6;
-                }
-
-                // 식중독 지수 (3월~11월)
-                if (month >= 3 && month <= 11) {
-                    const fsnRes = await fetch(`/api/livingindex?type=fsn&areaNo=${areaNo}&time=${baseTime}`);
-                    const fsnData = await fsnRes.json();
-                    console.log('[Weather] FSN response:', JSON.stringify(fsnData).substring(0, 300));
-                    if (!fsnData.error && fsnData.response?.body?.items?.item) {
-                        const items = fsnData.response.body.items.item;
-                        const item = Array.isArray(items) ? items[0] : items;
-                        if (item) indices.fsn = item.h0 || item.h3 || item.today || item.h6;
-                    }
-                }
-
-            } catch (error) {
-                console.error('[Weather] Living index error:', error);
-            }
-
-            console.log('[Weather] Living indices loaded:', indices);
-            this.livingIndex = Object.keys(indices).length > 0 ? indices : null;
+            // 서울 기준 (위도 37.5도) 간단한 일출/일몰 계산
+            // 연중 변화: 일출 5:10~7:45, 일몰 17:15~19:55 (대략)
+            const lat = 37.5;
+            
+            // 간단한 계산 공식 (정확도 ±5분)
+            const declination = -23.45 * Math.cos((360 / 365) * (dayOfYear + 10) * Math.PI / 180);
+            const hourAngle = Math.acos(-Math.tan(lat * Math.PI / 180) * Math.tan(declination * Math.PI / 180)) * 180 / Math.PI;
+            
+            const solarNoon = 12 + (127 - 126.98) * 4 / 60; // 서울 경도 보정
+            const sunriseHour = solarNoon - hourAngle / 15;
+            const sunsetHour = solarNoon + hourAngle / 15;
+            
+            const formatTime = (h) => {
+                const hours = Math.floor(h);
+                const mins = Math.round((h - hours) * 60);
+                return `${String(hours).padStart(2, '0')}${String(mins).padStart(2, '0')}`;
+            };
+            
+            return {
+                sunrise: formatTime(sunriseHour),
+                sunset: formatTime(sunsetHour),
+                location: '서울'
+            };
         },
 
         // 미세먼지 데이터 파싱
@@ -2508,22 +2491,6 @@
             };
         },
 
-        // 일출/일몰 데이터 파싱
-        parseSunRiseSet(data) {
-            console.log('[Weather] SunRiseSet raw data:', JSON.stringify(data).substring(0, 500));
-            const item = data.response?.body?.items?.item;
-            if (!item) {
-                console.log('[Weather] SunRiseSet: No item found');
-                return null;
-            }
-            
-            console.log('[Weather] SunRiseSet item:', item);
-            return {
-                sunrise: item.sunrise ? item.sunrise.toString().trim() : null,
-                sunset: item.sunset ? item.sunset.toString().trim() : null,
-                location: item.location
-            };
-        },
 
         // 미세먼지 등급 텍스트
         getAirGradeText(grade) {
@@ -2563,24 +2530,6 @@
             return { text: '북', arrow: '↓' };
         },
 
-        // 자외선 지수 텍스트 및 색상
-        getUVInfo(value) {
-            const v = parseInt(value);
-            if (v <= 2) return { text: '낮음', class: 'text-green-500' };
-            if (v <= 5) return { text: '보통', class: 'text-yellow-500' };
-            if (v <= 7) return { text: '높음', class: 'text-orange-500' };
-            if (v <= 10) return { text: '매우높음', class: 'text-red-500' };
-            return { text: '위험', class: 'text-purple-500' };
-        },
-
-        // 식중독 지수 텍스트 및 색상
-        getFsnInfo(value) {
-            const v = parseInt(value);
-            if (v <= 55) return { text: '낮음', class: 'text-green-500' };
-            if (v <= 70) return { text: '보통', class: 'text-yellow-500' };
-            if (v <= 85) return { text: '높음', class: 'text-orange-500' };
-            return { text: '매우높음', class: 'text-red-500' };
-        },
 
         // 지역명에서 중기예보 지역 코드 찾기
         getRegionCode(name) {
@@ -3002,33 +2951,15 @@
                 `;
             }
 
-            // 생활지수 + 일출일몰 HTML
-            let lifeHtml = '';
-            const lifeItems = [];
-            
-            // 자외선 지수
-            if (this.livingIndex?.UV) {
-                const uvInfo = this.getUVInfo(this.livingIndex.UV);
-                lifeItems.push(`<div class="flex items-center gap-1"><span>☀️</span><span class="text-xs ${uvInfo.class} font-medium">자외선 ${uvInfo.text}</span></div>`);
-            }
-            // 식중독 지수
-            if (this.livingIndex?.fsn) {
-                const fsnInfo = this.getFsnInfo(this.livingIndex.fsn);
-                lifeItems.push(`<div class="flex items-center gap-1"><span>🍱</span><span class="text-xs ${fsnInfo.class} font-medium">식중독 ${fsnInfo.text}</span></div>`);
-            }
-            // 일출/일몰
-            if (this.sunRiseSet?.sunrise || this.sunRiseSet?.sunset) {
-                const sunrise = this.sunRiseSet.sunrise ? this.sunRiseSet.sunrise.slice(0, 2) + ':' + this.sunRiseSet.sunrise.slice(2, 4) : '-';
-                const sunset = this.sunRiseSet.sunset ? this.sunRiseSet.sunset.slice(0, 2) + ':' + this.sunRiseSet.sunset.slice(2, 4) : '-';
-                lifeItems.push(`<div class="flex items-center gap-2 text-xs text-slate-500"><span>🌅 ${sunrise}</span><span>🌇 ${sunset}</span></div>`);
-            }
-            
-            if (lifeItems.length > 0) {
-                lifeHtml = `
-                    <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                        <div class="flex flex-wrap justify-center gap-4">
-                            ${lifeItems.join('')}
-                        </div>
+            // 일출/일몰 HTML
+            let sunHtml = '';
+            if (this.sunRiseSet?.sunrise && this.sunRiseSet?.sunset) {
+                const sunrise = this.sunRiseSet.sunrise.slice(0, 2) + ':' + this.sunRiseSet.sunrise.slice(2, 4);
+                const sunset = this.sunRiseSet.sunset.slice(0, 2) + ':' + this.sunRiseSet.sunset.slice(2, 4);
+                sunHtml = `
+                    <div class="mt-2 flex justify-center gap-4 text-xs text-slate-500">
+                        <span>🌅 일출 ${sunrise}</span>
+                        <span>🌇 일몰 ${sunset}</span>
                     </div>
                 `;
             }
@@ -3060,7 +2991,7 @@
                     </div>
                 </div>
                 ${airHtml}
-                ${lifeHtml}
+                ${sunHtml}
                 <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400 text-center">
                     ${loc.name} · ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 기준
                 </div>
