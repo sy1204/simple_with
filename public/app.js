@@ -2690,36 +2690,26 @@
     const MobileNav = {
         widgets: ['calendar', 'todo', 'time-widget', 'calculator', 'finance', 'converter', 'memo', 'dictionary', 'weather'],
         currentIndex: 0,
-        touchStartX: 0,
-        touchEndX: 0,
 
         init() {
-            // 네비게이션 링크 클릭 시 스크롤 오프셋 조정
+            // 네비게이션 링크 클릭 시 해당 위젯으로 스크롤
             document.querySelectorAll('nav a[href^="#"]').forEach(link => {
                 link.addEventListener('click', (e) => {
-                    e.preventDefault();
                     const targetId = link.getAttribute('href').slice(1);
                     if (!targetId) return; // 전체보기(#) 제외
                     
+                    e.preventDefault();
                     const targetEl = document.getElementById(targetId);
                     if (targetEl) {
-                        const header = document.querySelector('header');
-                        const headerHeight = header ? header.offsetHeight : 100;
-                        const mainContent = document.getElementById('main-content');
+                        // scrollIntoView 사용 (가장 확실한 방법)
+                        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         
-                        if (mainContent) {
-                            // main-content 내부 스크롤 위치 계산
-                            const containerRect = mainContent.getBoundingClientRect();
-                            const targetRect = targetEl.getBoundingClientRect();
-                            const scrollTop = mainContent.scrollTop;
-                            const targetPosition = scrollTop + targetRect.top - containerRect.top - 16;
-                            
-                            mainContent.scrollTo({ top: targetPosition, behavior: 'smooth' });
-                        } else {
-                            // fallback: window 스크롤
-                            const targetPosition = targetEl.getBoundingClientRect().top + window.scrollY - headerHeight - 16;
-                            window.scrollTo({ top: targetPosition, behavior: 'smooth' });
-                        }
+                        // 헤더 높이만큼 추가 스크롤 (약간의 딜레이 후)
+                        setTimeout(() => {
+                            const header = document.querySelector('header');
+                            const headerHeight = header ? header.offsetHeight : 100;
+                            window.scrollBy({ top: -headerHeight - 10, behavior: 'smooth' });
+                        }, 100);
                         
                         // 현재 인덱스 업데이트
                         this.currentIndex = this.widgets.indexOf(targetId);
@@ -2727,8 +2717,6 @@
                     }
                 });
             });
-
-            // 모바일 터치 스와이프 감지 (위젯 간 이동은 제거 - 달력 스와이프와 충돌)
         },
 
         handleSwipe() {
