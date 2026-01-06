@@ -3567,17 +3567,14 @@
             // 자동 스크롤 중지
             this.stopAutoScroll();
 
-            // placeholder 위치에 원본 요소 삽입
+            // placeholder 위치에 원본 요소 삽입 (DOM 순서만 변경)
             if (this.placeholder && this.placeholder.parentNode) {
                 this.placeholder.parentNode.insertBefore(this.draggedElement, this.placeholder);
             }
 
-            // 그리드 좌표 계산 및 적용 (마지막 드래그 위치 사용)
-            if (this.lastDragX !== undefined && this.lastDragY !== undefined) {
-                const coords = this.getGridCoordinates(this.lastDragX, this.lastDragY);
-                this.draggedElement.style.gridColumnStart = coords.column.toString();
-                this.draggedElement.style.gridRowStart = coords.row.toString();
-            }
+            // grid 좌표 초기화 (CSS Grid auto-flow에 맡김)
+            this.draggedElement.style.gridColumnStart = '';
+            this.draggedElement.style.gridRowStart = '';
 
             // 스타일 복원
             this.draggedElement.classList.remove('dragging');
@@ -3646,48 +3643,51 @@
 
         getDragAfterElement(x, y) {
             const container = document.querySelector('.grid');
-            const draggableElements = [...container.querySelectorAll('.card:not(.dragging), .widget-placeholder')];
+            const draggableElements = [...container.querySelectorAll('.card:not(.dragging)')];
 
-            // 그리드 레이아웃에서 가장 가까운 위치 찾기
-            return draggableElements.reduce((closest, child) => {
+            // 각 요소의 위치를 확인하고, 마우스 위치 다음에 올 요소를 찾음
+            let closestElement = null;
+            let closestOffset = Number.POSITIVE_INFINITY;
+
+            for (const child of draggableElements) {
                 const box = child.getBoundingClientRect();
 
-                // 요소의 중심점 계산
-                const childCenterX = box.left + box.width / 2;
-                const childCenterY = box.top + box.height / 2;
+                // 요소의 상단 중앙점
+                const elementY = box.top + box.height / 2;
+                const elementX = box.left + box.width / 2;
 
-                // 커서와 요소 중심 사이의 거리 계산
-                const distance = Math.sqrt(
-                    Math.pow(x - childCenterX, 2) +
-                    Math.pow(y - childCenterY, 2)
-                );
+                // 마우스가 이 요소보다 위에 있는지 확인
+                // 수직 위치 차이 계산 (마우스가 요소 위에 있으면 음수)
+                const offsetY = elementY - y;
 
-                // 커서가 요소 위쪽에 있는지 확인 (위쪽에 있으면 이 요소 앞에 삽입)
-                const isAbove = y < childCenterY;
-
-                if (isAbove && (closest.distance === null || distance < closest.distance)) {
-                    return { distance: distance, element: child };
-                } else {
-                    return closest;
+                // 마우스가 요소의 상단 위에 있고, 가장 가까운 요소를 찾음
+                if (offsetY > 0 && offsetY < closestOffset) {
+                    closestOffset = offsetY;
+                    closestElement = child;
                 }
-            }, { distance: null, element: null }).element;
+                // 같은 행에 있는 경우 (Y 차이가 적음) X 위치도 고려
+                else if (Math.abs(offsetY) < 50) {
+                    const offsetX = elementX - x;
+                    if (offsetX > 0 && offsetX < closestOffset) {
+                        closestOffset = offsetX;
+                        closestElement = child;
+                    }
+                }
+            }
+
+            return closestElement;
         },
 
         saveLayout() {
             const cards = document.querySelectorAll('.card');
             const layout = [];
 
-            cards.forEach(card => {
-                const gridColumnStart = card.style.gridColumnStart || 'auto';
-                const gridRowStart = card.style.gridRowStart || 'auto';
-
+            cards.forEach((card, index) => {
                 layout.push({
                     id: card.id,
                     colSpan: this.getWidgetColSpan(card),
                     rowSpan: this.getWidgetRowSpan(card),
-                    gridColumnStart: gridColumnStart,
-                    gridRowStart: gridRowStart,
-                    order: Array.from(cards).indexOf(card)
+                    order: index
                 });
             });
 
@@ -3703,20 +3703,14 @@
                 const container = document.querySelector('.grid');
                 if (!container) return;
 
-                // 순서대로 재배치 및 그리드 위치 적용
+                // DOM 순서대로 재배치
                 layout.sort((a, b) => a.order - b.order).forEach(item => {
                     const card = document.getElementById(item.id);
                     if (card) {
                         this.updateWidgetSize(card, item.colSpan, item.rowSpan);
-
-                        // 그리드 좌표 적용
-                        if (item.gridColumnStart && item.gridColumnStart !== 'auto') {
-                            card.style.gridColumnStart = item.gridColumnStart;
-                        }
-                        if (item.gridRowStart && item.gridRowStart !== 'auto') {
-                            card.style.gridRowStart = item.gridRowStart;
-                        }
-
+                        // grid 좌표는 사용하지 않음 (CSS Grid auto-flow에 맡김)
+                        card.style.gridColumnStart = '';
+                        card.style.gridRowStart = '';
                         container.appendChild(card);
                     }
                 });
