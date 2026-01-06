@@ -3292,63 +3292,65 @@
         addResizeHandles(card) {
             if (card.querySelector('.resize-handle')) return;
 
-            const edges = ['top', 'right', 'bottom', 'left'];
+            // 우측 하단 코너 핸들만 생성
+            const handle = document.createElement('div');
+            handle.className = 'resize-handle resize-corner';
+            handle.style.cssText = `
+                position: absolute;
+                bottom: 0;
+                right: 0;
+                width: 20px;
+                height: 20px;
+                background: rgba(59, 130, 246, 0.7);
+                cursor: nwse-resize;
+                z-index: 100;
+                border-radius: 0 0 8px 0;
+                transition: background 0.2s;
+            `;
 
-            edges.forEach(edge => {
-                const handle = document.createElement('div');
-                handle.className = `resize-handle resize-${edge}`;
+            // 핸들 내부에 드래그 아이콘 추가
+            handle.innerHTML = '<span class="material-symbols-outlined" style="font-size: 16px; color: white; position: absolute; bottom: 2px; right: 2px;">drag_indicator</span>';
 
-                const isVertical = edge === 'top' || edge === 'bottom';
-                const baseStyle = 'position: absolute; background: rgba(59, 130, 246, 0.7); z-index: 100; transition: background 0.2s;';
-
-                if (isVertical) {
-                    handle.style.cssText = `${baseStyle} left: 0; right: 0; height: 4px; cursor: ns-resize; ${edge}: -2px;`;
-                } else {
-                    handle.style.cssText = `${baseStyle} top: 0; bottom: 0; width: 4px; cursor: ew-resize; ${edge}: -2px;`;
-                }
-
-                handle.addEventListener('mouseenter', () => {
-                    handle.style.background = 'rgba(59, 130, 246, 1)';
-                });
-                handle.addEventListener('mouseleave', () => {
-                    handle.style.background = 'rgba(59, 130, 246, 0.7)';
-                });
-
-                let startPos, startSpan, startRowSpan;
-
-                const onMouseMove = (e) => {
-                    e.preventDefault();
-                    const delta = isVertical ? (e.clientY - startPos) : (e.clientX - startPos);
-
-                    if (edge === 'right' || edge === 'left') {
-                        const increment = edge === 'right' ? 1 : -1;
-                        const newColSpan = Math.max(1, Math.min(4, startSpan + Math.floor(delta / 100) * increment));
-                        this.updateWidgetSize(card, newColSpan, startRowSpan);
-                    } else {
-                        const increment = edge === 'bottom' ? 1 : -1;
-                        const newRowSpan = Math.max(1, Math.min(3, startRowSpan + Math.floor(delta / 75) * increment));
-                        this.updateWidgetSize(card, startSpan, newRowSpan);
-                    }
-                };
-
-                const onMouseUp = () => {
-                    document.removeEventListener('mousemove', onMouseMove);
-                    document.removeEventListener('mouseup', onMouseUp);
-                    this.saveLayout();
-                };
-
-                handle.addEventListener('mousedown', (e) => {
-                    e.stopPropagation();
-                    startPos = isVertical ? e.clientY : e.clientX;
-                    startSpan = this.getWidgetColSpan(card);
-                    startRowSpan = this.getWidgetRowSpan(card);
-
-                    document.addEventListener('mousemove', onMouseMove);
-                    document.addEventListener('mouseup', onMouseUp);
-                });
-
-                card.appendChild(handle);
+            handle.addEventListener('mouseenter', () => {
+                handle.style.background = 'rgba(59, 130, 246, 1)';
             });
+            handle.addEventListener('mouseleave', () => {
+                handle.style.background = 'rgba(59, 130, 246, 0.7)';
+            });
+
+            let startX, startY, startColSpan, startRowSpan;
+
+            const onMouseMove = (e) => {
+                e.preventDefault();
+                const deltaX = e.clientX - startX;
+                const deltaY = e.clientY - startY;
+
+                // 가로 크기 조절
+                const newColSpan = Math.max(1, Math.min(4, startColSpan + Math.floor(deltaX / 150)));
+                // 세로 크기 조절
+                const newRowSpan = Math.max(1, Math.min(3, startRowSpan + Math.floor(deltaY / 100)));
+
+                this.updateWidgetSize(card, newColSpan, newRowSpan);
+            };
+
+            const onMouseUp = () => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+                this.saveLayout();
+            };
+
+            handle.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                startX = e.clientX;
+                startY = e.clientY;
+                startColSpan = this.getWidgetColSpan(card);
+                startRowSpan = this.getWidgetRowSpan(card);
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+
+            card.appendChild(handle);
         },
 
         removeResizeHandles(card) {
