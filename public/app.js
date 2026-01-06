@@ -457,13 +457,57 @@
             this.render();
             document.getElementById('go-today').addEventListener('click', () => { this.date = new Date(); this.render(); });
 
-            // 휠로 월 단위 이동
+            // 휠로 월 단위 이동 (데스크톱)
             document.getElementById('calendar-area').addEventListener('wheel', (e) => {
                 e.preventDefault();
                 const direction = e.deltaY > 0 ? 1 : -1;
                 this.date.setMonth(this.date.getMonth() + direction);
                 this.render();
             }, { passive: false });
+
+            // 터치 스와이프로 월 이동 (모바일)
+            const calendarArea = document.getElementById('calendar-area');
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let isSwiping = false;
+
+            calendarArea.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
+                isSwiping = true;
+            }, { passive: true });
+
+            calendarArea.addEventListener('touchmove', (e) => {
+                if (!isSwiping) return;
+                const deltaX = Math.abs(e.changedTouches[0].screenX - touchStartX);
+                const deltaY = Math.abs(e.changedTouches[0].screenY - touchStartY);
+                // 수평 스와이프가 수직보다 크면 스크롤 방지
+                if (deltaX > deltaY && deltaX > 10) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+
+            calendarArea.addEventListener('touchend', (e) => {
+                if (!isSwiping) return;
+                isSwiping = false;
+                
+                const touchEndX = e.changedTouches[0].screenX;
+                const touchEndY = e.changedTouches[0].screenY;
+                const deltaX = touchStartX - touchEndX;
+                const deltaY = Math.abs(touchStartY - touchEndY);
+                
+                // 수평 스와이프가 충분히 크고, 수직 이동보다 클 때만 동작
+                if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > deltaY) {
+                    if (deltaX > 0) {
+                        // 왼쪽 스와이프 → 다음 달
+                        this.date.setMonth(this.date.getMonth() + 1);
+                    } else {
+                        // 오른쪽 스와이프 → 이전 달
+                        this.date.setMonth(this.date.getMonth() - 1);
+                    }
+                    this.render();
+                }
+            }, { passive: true });
 
             // 다달 보기 버튼
             [1, 2, 3].forEach(m => {
