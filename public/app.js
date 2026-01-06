@@ -1748,10 +1748,44 @@
     const Weather = {
         // 즐겨찾기 (최대 3개)
         favorites: Storage.get('weatherFavorites', [
-            { name: '서울', nx: 60, ny: 127 }
+            { name: '서울', nx: 60, ny: 127, regId: '11B00000', stnId: '108' }
         ]),
         currentIdx: Storage.get('weatherCurrentIdx', 0),
+        dailyDays: Storage.get('weatherDailyDays', 10), // 주간예보 일수 (기본 10일)
         data: null,
+        midForecast: null, // 중기예보 데이터
+
+        // 중기예보 지역 코드 매핑
+        regionCodes: {
+            // 서울/경기
+            '서울': { regId: '11B00000', stnId: '108' },
+            '인천': { regId: '11B00000', stnId: '112' },
+            '경기': { regId: '11B00000', stnId: '108' },
+            '수원': { regId: '11B00000', stnId: '119' },
+            // 강원
+            '강원': { regId: '11D10000', stnId: '101' },
+            '춘천': { regId: '11D10000', stnId: '101' },
+            '강릉': { regId: '11D20000', stnId: '105' },
+            // 충청
+            '대전': { regId: '11C20000', stnId: '133' },
+            '세종': { regId: '11C20000', stnId: '133' },
+            '충북': { regId: '11C10000', stnId: '131' },
+            '청주': { regId: '11C10000', stnId: '131' },
+            '충남': { regId: '11C20000', stnId: '129' },
+            // 전라
+            '광주': { regId: '11F20000', stnId: '156' },
+            '전북': { regId: '11F10000', stnId: '146' },
+            '전주': { regId: '11F10000', stnId: '146' },
+            '전남': { regId: '11F20000', stnId: '156' },
+            // 경상
+            '부산': { regId: '11H20000', stnId: '159' },
+            '대구': { regId: '11H10000', stnId: '143' },
+            '울산': { regId: '11H20000', stnId: '152' },
+            '경북': { regId: '11H10000', stnId: '143' },
+            '경남': { regId: '11H20000', stnId: '155' },
+            // 제주
+            '제주': { regId: '11G00000', stnId: '184' },
+        },
 
         // 전국 주요 지역 격자 좌표 (시/구/동 단위)
         locations: [
@@ -2084,6 +2118,7 @@
             if (!container) return;
 
             const loc = this.currentLocation;
+            const regionCode = this.getRegionCode(loc.name);
 
             container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-400 py-8">
                 <span class="material-symbols-outlined text-4xl mb-2 animate-pulse">cloud_sync</span>
@@ -2091,14 +2126,16 @@
             </div>`;
 
             try {
-                // 현재 날씨 (초단기실황) + 단기예보 동시 요청
-                const [currentRes, forecastRes] = await Promise.all([
+                // 현재 날씨 + 단기예보 + 중기예보 동시 요청
+                const [currentRes, forecastRes, midRes] = await Promise.all([
                     fetch(`/api/weather?nx=${loc.nx}&ny=${loc.ny}&type=ultra`),
-                    fetch(`/api/weather?nx=${loc.nx}&ny=${loc.ny}&type=short`)
+                    fetch(`/api/weather?nx=${loc.nx}&ny=${loc.ny}&type=short`),
+                    fetch(`/api/midforecast?regId=${regionCode.regId}&stnId=${regionCode.stnId}`)
                 ]);
 
                 const currentData = await currentRes.json();
                 const forecastData = await forecastRes.json();
+                const midData = await midRes.json();
 
                 if (currentData.error) {
                     this.showError(currentData.error.message);
@@ -2106,13 +2143,56 @@
                 }
 
                 this.data = this.parseCurrentWeather(currentData);
-                // 단기예보 에러는 무시하고 현재 날씨만이라도 표시
+                // 단기예보 에러는 무시
                 this.forecast = forecastData.error ? { hourly: [], daily: [] } : this.parseForecast(forecastData);
-                console.log('[Weather] Forecast data:', this.forecast);
+                // 중기예보 파싱
+                this.midForecast = midData.error ? [] : this.parseMidForecast(midData);
+                console.log('[Weather] Mid forecast:', this.midForecast);
                 this.render();
             } catch (error) {
                 this.showError('날씨 정보를 불러올 수 없습니다: ' + error.message);
             }
+        },
+
+        // 지역명에서 중기예보 지역 코드 찾기
+        getRegionCode(name) {
+            for (const [key, value] of Object.entries(this.regionCodes)) {
+                if (name.includes(key)) {
+                    return value;
+                }
+            }
+            // 기본값: 서울
+            return { regId: '11B00000', stnId: '108' };
+        },
+
+        // 중기예보 파싱
+        parseMidForecast(data) {
+            const tempItems = data.temperature?.response?.body?.items?.item || [];
+            const landItems = data.land?.response?.body?.items?.item || [];
+
+            if (!tempItems.length && !landItems.length) return [];
+
+            const temp = tempItems[0] || {};
+            const land = landItems[0] || {};
+
+            const result = [];
+            // 중기예보: +3일 ~ +10일
+            for (let i = 3; i <= 10; i++) {
+                const day = {
+                    dayOffset: i,
+                    min: temp[`taMin${i}`] ?? null,
+                    max: temp[`taMax${i}`] ?? null,
+                    amPop: land[`rnSt${i}Am`] ?? land[`rnSt${i}`] ?? 0,
+                    pmPop: land[`rnSt${i}Pm`] ?? land[`rnSt${i}`] ?? 0,
+                    amSky: land[`wf${i}Am`] ?? land[`wf${i}`] ?? '맑음',
+                    pmSky: land[`wf${i}Pm`] ?? land[`wf${i}`] ?? '맑음',
+                };
+                if (day.min !== null || day.max !== null) {
+                    result.push(day);
+                }
+            }
+
+            return result;
         },
 
         parseCurrentWeather(data) {
@@ -2261,6 +2341,82 @@
             return days[date.getDay()] + '요일';
         },
 
+        getDayNameByOffset(offset) {
+            const date = new Date();
+            date.setDate(date.getDate() + offset);
+            
+            if (offset === 0) return '오늘';
+            if (offset === 1) return '내일';
+            if (offset === 2) return '모레';
+            
+            const days = ['일', '월', '화', '수', '목', '금', '토'];
+            return days[date.getDay()] + '요일';
+        },
+
+        // 중기예보 날씨 텍스트 → 아이콘
+        getMidWeatherIcon(sky) {
+            if (!sky) return 'sunny';
+            if (typeof sky === 'string') {
+                if (sky.includes('맑')) return 'sunny';
+                if (sky.includes('구름많') || sky.includes('구름 많')) return 'partly_cloudy_day';
+                if (sky.includes('흐') && sky.includes('비')) return 'rainy';
+                if (sky.includes('흐') && sky.includes('눈')) return 'weather_snowy';
+                if (sky.includes('흐')) return 'cloud';
+                if (sky.includes('비')) return 'rainy';
+                if (sky.includes('눈')) return 'weather_snowy';
+            }
+            // SKY 코드인 경우
+            const skyIcons = { '1': 'sunny', '3': 'partly_cloudy_day', '4': 'cloud' };
+            return skyIcons[sky] || 'sunny';
+        },
+
+        // 단기예보 + 중기예보 합치기 (모레부터)
+        getCombinedDailyForecast() {
+            const result = [];
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // 모레(+2일)부터 시작
+            for (let i = 2; i <= 12; i++) {
+                const targetDate = new Date(today);
+                targetDate.setDate(targetDate.getDate() + i);
+                const dateStr = targetDate.toISOString().slice(0, 10).replace(/-/g, '');
+                
+                // 단기예보에서 찾기 (+3일까지)
+                if (i <= 3 && this.forecast?.daily) {
+                    const shortDay = this.forecast.daily.find(d => d.date === dateStr);
+                    if (shortDay) {
+                        result.push({
+                            dayOffset: i,
+                            dayName: this.getDayNameByOffset(i),
+                            min: shortDay.min,
+                            max: shortDay.max,
+                            pop: shortDay.pop,
+                            sky: shortDay.sky
+                        });
+                        continue;
+                    }
+                }
+                
+                // 중기예보에서 찾기 (+3일~+10일)
+                if (this.midForecast?.length) {
+                    const midDay = this.midForecast.find(d => d.dayOffset === i);
+                    if (midDay) {
+                        result.push({
+                            dayOffset: i,
+                            dayName: this.getDayNameByOffset(i),
+                            min: midDay.min,
+                            max: midDay.max,
+                            pop: Math.max(midDay.amPop || 0, midDay.pmPop || 0),
+                            sky: midDay.pmSky || midDay.amSky || '맑음'
+                        });
+                    }
+                }
+            }
+
+            return result;
+        },
+
         render() {
             const container = document.getElementById('weather-content');
             if (!container || !this.data) return;
@@ -2305,24 +2461,33 @@
                 `;
             }
 
-            // 주간 예보 HTML (모레부터)
+            // 주간 예보 HTML (단기 + 중기 합치기)
             let dailyHtml = '';
-            if (this.forecast?.daily?.length) {
+            const combinedDaily = this.getCombinedDailyForecast();
+            if (combinedDaily.length) {
                 dailyHtml = `
                     <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                        <p class="text-xs font-medium text-slate-500 mb-3">📅 주간 예보 (모레~)</p>
+                        <div class="flex items-center justify-between mb-3">
+                            <p class="text-xs font-medium text-slate-500">📅 주간 예보</p>
+                            <select id="weather-daily-days" class="text-xs bg-slate-100 dark:bg-slate-800 border-none rounded px-2 py-1">
+                                <option value="3" ${this.dailyDays === 3 ? 'selected' : ''}>3일</option>
+                                <option value="5" ${this.dailyDays === 5 ? 'selected' : ''}>5일</option>
+                                <option value="7" ${this.dailyDays === 7 ? 'selected' : ''}>7일</option>
+                                <option value="10" ${this.dailyDays === 10 ? 'selected' : ''}>10일</option>
+                            </select>
+                        </div>
                         <div class="space-y-2">
-                            ${this.forecast.daily.map(d => {
-                                const dIcon = this.getWeatherIcon(null, d.sky);
+                            ${combinedDaily.slice(0, this.dailyDays).map(d => {
+                                const dIcon = this.getMidWeatherIcon(d.sky);
                                 return `
                                     <div class="flex items-center justify-between py-1">
-                                        <span class="text-sm font-medium w-14">${this.getDayName(d.date)}</span>
+                                        <span class="text-sm font-medium w-14">${d.dayName}</span>
                                         <span class="material-symbols-outlined text-lg text-primary">${dIcon}</span>
                                         ${d.pop > 0 ? `<span class="text-xs text-blue-500 w-10">💧${d.pop}%</span>` : '<span class="w-10"></span>'}
                                         <div class="flex items-center gap-2 text-sm">
-                                            <span class="text-blue-500">${Math.round(d.min)}°</span>
+                                            <span class="text-blue-500">${d.min !== null ? Math.round(d.min) + '°' : '-'}</span>
                                             <div class="w-16 h-1.5 rounded-full bg-gradient-to-r from-blue-400 to-red-400 opacity-50"></div>
-                                            <span class="text-red-500">${Math.round(d.max)}°</span>
+                                            <span class="text-red-500">${d.max !== null ? Math.round(d.max) + '°' : '-'}</span>
                                         </div>
                                     </div>
                                 `;
@@ -2364,6 +2529,13 @@
                 ${hourlyHtml}
                 ${dailyHtml}
             `;
+
+            // 주간예보 일수 선택 이벤트
+            document.getElementById('weather-daily-days')?.addEventListener('change', (e) => {
+                this.dailyDays = parseInt(e.target.value);
+                Storage.set('weatherDailyDays', this.dailyDays);
+                this.render();
+            });
         },
 
         showError(message) {

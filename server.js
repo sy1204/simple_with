@@ -371,6 +371,71 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // ===== API 엔드포인트: /api/midforecast (기상청 중기예보) =====
+    if (pathname === '/api/midforecast') {
+        const regId = parsedUrl.query.regId || '11B00000';  // 서울/경기 기본값
+        const stnId = parsedUrl.query.stnId || '108';       // 서울 기본값
+
+        if (!KMA_API_KEY) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: { code: 'CONFIG_ERROR', message: '기상청 API 키가 설정되지 않았습니다.' } }));
+            return;
+        }
+
+        try {
+            const now = new Date();
+            let year = now.getFullYear();
+            let month = now.getMonth() + 1;
+            let day = now.getDate();
+            const hour = now.getHours();
+
+            // 중기예보: 06시, 18시 발표
+            let baseTime;
+            if (hour < 6) {
+                day = day - 1;
+                if (day < 1) {
+                    month = month - 1;
+                    if (month < 1) { month = 12; year = year - 1; }
+                    day = new Date(year, month, 0).getDate();
+                }
+                baseTime = '1800';
+            } else if (hour < 18) {
+                baseTime = '0600';
+            } else {
+                baseTime = '1800';
+            }
+
+            const tmFc = `${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}${baseTime}`;
+            console.log(`[MidForecast] tmFc: ${tmFc}, regId: ${regId}, stnId: ${stnId}`);
+
+            const [tempRes, landRes] = await Promise.all([
+                fetch(`https://apihub.kma.go.kr/api/typ02/openApi/MidFcstInfoService/getMidTa?stnId=${stnId}&tmFc=${tmFc}&dataType=JSON&authKey=${KMA_API_KEY}`),
+                fetch(`https://apihub.kma.go.kr/api/typ02/openApi/MidFcstInfoService/getMidLandFcst?regId=${regId}&tmFc=${tmFc}&dataType=JSON&authKey=${KMA_API_KEY}`)
+            ]);
+
+            const tempText = await tempRes.text();
+            const landText = await landRes.text();
+
+            let tempData, landData;
+            try {
+                tempData = JSON.parse(tempText);
+                landData = JSON.parse(landText);
+            } catch (e) {
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ error: { code: 'PARSE_ERROR', message: '중기예보 API 응답 파싱 오류' } }));
+                return;
+            }
+
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ temperature: tempData, land: landData, tmFc: tmFc }));
+        } catch (error) {
+            console.error('[MidForecast] Error:', error);
+            res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: { code: 'API_ERROR', message: error.message } }));
+        }
+        return;
+    }
+
     // ===== API 엔드포인트: /api/place (네이버 지역검색) =====
     if (pathname === '/api/place') {
         const query = parsedUrl.query.q;
