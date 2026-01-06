@@ -899,39 +899,66 @@
             const list = document.getElementById('todo-list');
             if (!list) return;
 
-            list.innerHTML = this.items.map(item => {
+            // 완료되지 않은 항목과 완료된 항목 분리
+            const activeItems = this.items.filter(i => !i.done);
+            const doneItems = this.items.filter(i => i.done);
+
+            const renderItem = (item) => {
                 const depth = item.depth || 0;
-                const marginLeft = depth * 24; // Depth 당 24px
+                const marginLeft = depth * 20;
                 const isActive = this.activeItemId === item.id;
 
                 return `
                 <div data-id="${item.id}" 
-                     class="flex items-start gap-2 p-2 rounded-lg group/item transition-colors ${isActive ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}"
+                     class="flex items-center gap-2 py-1.5 group/item transition-all ${isActive ? 'bg-primary/5' : ''}"
                      style="margin-left: ${marginLeft}px"
                      onclick="window.Todo.select(${item.id})">
                      
-                    <!-- 드래그 핸들 (마우스 다운 시 시작) -->
-                    <div class="cursor-grab text-slate-300 hover:text-slate-500 mt-1 opacity-0 group-hover/item:opacity-100"
-                         onmousedown="event.stopPropagation(); window.Todo.handleDragStart(event, ${item.id})">
-                        <span class="material-symbols-outlined text-lg">drag_indicator</span>
-                    </div>
-
+                    <!-- 체크박스 (Google Keep 스타일) -->
                     <button onclick="event.stopPropagation(); window.Todo.toggle(${item.id})" 
-                            class="${item.done ? 'text-primary' : 'text-slate-300 hover:text-primary'} mt-0.5">
-                        <span class="material-symbols-outlined text-xl">${item.done ? 'check_box' : 'check_box_outline_blank'}</span>
+                            class="flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all
+                                   ${item.done 
+                                       ? 'bg-primary border-primary' 
+                                       : 'border-slate-300 dark:border-slate-600 hover:border-primary'}">
+                        ${item.done ? '<span class="material-symbols-outlined text-white text-sm">check</span>' : ''}
                     </button>
                     
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm ${item.done ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'} leading-snug truncate">${item.text}</p>
-                        <span class="text-[10px] text-slate-400">${item.time}</span>
+                    <!-- 텍스트 -->
+                    <span class="flex-1 text-sm ${item.done 
+                        ? 'text-slate-400 line-through decoration-slate-400' 
+                        : 'text-slate-700 dark:text-slate-200'} cursor-text select-text">${item.text}</span>
+                    
+                    <!-- 드래그 & 삭제 (hover 시 표시) -->
+                    <div class="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                        <div class="cursor-grab text-slate-300 hover:text-slate-500 p-0.5"
+                             onmousedown="event.stopPropagation(); window.Todo.handleDragStart(event, ${item.id})">
+                            <span class="material-symbols-outlined text-base">drag_indicator</span>
+                        </div>
+                        <button onclick="event.stopPropagation(); window.Todo.remove(${item.id})" 
+                                class="text-slate-300 hover:text-red-500 p-0.5">
+                            <span class="material-symbols-outlined text-base">close</span>
+                        </button>
                     </div>
-                    
-                    <button onclick="event.stopPropagation(); window.Todo.remove(${item.id})" 
-                            class="text-slate-300 hover:text-red-500 opacity-0 group-hover/item:opacity-100">
-                        <span class="material-symbols-outlined text-sm">close</span>
-                    </button>
-                </div>
-            `}).join('');
+                </div>`;
+            };
+
+            let html = activeItems.map(renderItem).join('');
+            
+            // 완료된 항목이 있으면 구분선과 함께 표시
+            if (doneItems.length > 0) {
+                html += `
+                <details class="mt-3" open>
+                    <summary class="text-xs text-slate-400 cursor-pointer hover:text-slate-600 py-1 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">expand_more</span>
+                        완료됨 (${doneItems.length})
+                    </summary>
+                    <div class="mt-1 opacity-60">
+                        ${doneItems.map(renderItem).join('')}
+                    </div>
+                </details>`;
+            }
+
+            list.innerHTML = html;
         }
     };
     window.Todo = Todo;

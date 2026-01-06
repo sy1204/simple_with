@@ -314,16 +314,18 @@
                     <!-- Todo Card -->
                     <div id="todo"
                         class="card group relative col-span-1 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
-                        <h3 class="text-sm font-semibold text-slate-500 mb-4 flex items-center gap-2">
-                            <span class="material-symbols-outlined text-lg">check_box</span>To-Do List
+                        <h3 class="text-sm font-semibold text-slate-500 mb-3 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-lg">checklist</span>체크리스트
                         </h3>
-                        <div id="todo-list" class="flex-1 overflow-y-auto pr-1 space-y-2 mb-4"></div>
-                        <div class="flex gap-2">
+                        <div id="todo-list" class="flex-1 overflow-y-auto pr-1 mb-3"></div>
+                        <div class="flex items-center gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
+                            <span class="material-symbols-outlined text-slate-300 text-lg">add</span>
                             <input id="todo-input"
-                                class="flex-1 bg-background-light dark:bg-[#111822] border-none rounded-lg text-sm px-3 py-2 focus:ring-1 focus:ring-primary"
-                                placeholder="새로운 할 일..." type="text" />
-                            <button id="todo-add" class="bg-primary hover:bg-blue-600 text-white p-2 rounded-lg"><span
-                                    class="material-symbols-outlined text-lg">add</span></button>
+                                class="flex-1 bg-transparent border-none text-sm px-0 py-1 focus:ring-0 placeholder-slate-400"
+                                placeholder="목록 항목 추가" type="text" />
+                            <button id="todo-add" class="text-primary hover:bg-primary/10 p-1.5 rounded-full transition-colors">
+                                <span class="material-symbols-outlined text-lg">send</span>
+                            </button>
                         </div>
                     </div>
 
