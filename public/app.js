@@ -2424,11 +2424,15 @@
                 // 일출/일몰 계산 (서울 기준, 대한민국 평균)
                 this.sunRiseSet = this.calcSunRiseSet();
 
+                // 생활기상지수 로드 (자외선)
+                await this.loadLivingIndex(areaInfo.areaNo, today + currentHour);
+
                 console.log('[Weather] All data loaded:', {
                     shortDays: this.forecast.daily?.length || 0,
                     midDays: this.midForecast?.length || 0,
                     airQuality: this.airQuality ? 'OK' : 'N/A',
-                    sunRiseSet: this.sunRiseSet ? 'OK' : 'N/A'
+                    sunRiseSet: this.sunRiseSet ? 'OK' : 'N/A',
+                    livingIndex: this.livingIndex ? 'OK' : 'N/A'
                 });
                 
                 this.render();
@@ -2466,6 +2470,46 @@
                 sunset: formatTime(sunsetHour),
                 location: '서울'
             };
+        },
+
+        // 생활기상지수 로드 (자외선 지수)
+        async loadLivingIndex(areaNo, time) {
+            const indices = {};
+            
+            // time 형식: YYYYMMDDHH → 06시 또는 18시로 맞춤
+            const baseTime = time.slice(0, 8) + '06';
+            console.log('[Weather] Living index request - areaNo:', areaNo, 'time:', baseTime);
+
+            try {
+                // 자외선 지수 (연중)
+                const uvRes = await fetch(`/api/livingindex?type=UV&areaNo=${areaNo}&time=${baseTime}`);
+                const uvData = await uvRes.json();
+                console.log('[Weather] UV response:', JSON.stringify(uvData).substring(0, 500));
+                
+                if (!uvData.error && uvData.response?.body?.items?.item) {
+                    const items = uvData.response.body.items.item;
+                    const item = Array.isArray(items) ? items[0] : items;
+                    if (item) {
+                        // h0, h3, h6 등 시간대별 값 중 현재와 가까운 값 사용
+                        indices.UV = item.h0 || item.h3 || item.h6 || item.h9 || item.h12;
+                    }
+                }
+            } catch (error) {
+                console.error('[Weather] Living index error:', error);
+            }
+
+            console.log('[Weather] Living indices loaded:', indices);
+            this.livingIndex = Object.keys(indices).length > 0 ? indices : null;
+        },
+
+        // 자외선 지수 텍스트 및 색상
+        getUVInfo(value) {
+            const v = parseInt(value);
+            if (v <= 2) return { text: '낮음', class: 'text-green-600' };
+            if (v <= 5) return { text: '보통', class: 'text-yellow-600' };
+            if (v <= 7) return { text: '높음', class: 'text-orange-500' };
+            if (v <= 10) return { text: '매우높음', class: 'text-red-500' };
+            return { text: '위험', class: 'text-purple-600' };
         },
 
         // 미세먼지 데이터 파싱
@@ -2951,15 +2995,28 @@
                 `;
             }
 
-            // 일출/일몰 HTML
-            let sunHtml = '';
+            // 일출/일몰 + 자외선 HTML
+            let lifeHtml = '';
+            const lifeItems = [];
+            
+            // 자외선 지수
+            if (this.livingIndex?.UV) {
+                const uvInfo = this.getUVInfo(this.livingIndex.UV);
+                lifeItems.push(`<span class="text-xs ${uvInfo.class} font-medium">☀️ 자외선 ${uvInfo.text}</span>`);
+            }
+            
+            // 일출/일몰
             if (this.sunRiseSet?.sunrise && this.sunRiseSet?.sunset) {
                 const sunrise = this.sunRiseSet.sunrise.slice(0, 2) + ':' + this.sunRiseSet.sunrise.slice(2, 4);
                 const sunset = this.sunRiseSet.sunset.slice(0, 2) + ':' + this.sunRiseSet.sunset.slice(2, 4);
-                sunHtml = `
-                    <div class="mt-2 flex justify-center gap-4 text-xs text-slate-500">
-                        <span>일출 ${sunrise}</span>
-                        <span>일몰 ${sunset}</span>
+                lifeItems.push(`<span class="text-xs text-slate-500">일출 ${sunrise}</span>`);
+                lifeItems.push(`<span class="text-xs text-slate-500">일몰 ${sunset}</span>`);
+            }
+            
+            if (lifeItems.length > 0) {
+                lifeHtml = `
+                    <div class="mt-2 flex justify-center gap-4">
+                        ${lifeItems.join('')}
                     </div>
                 `;
             }
@@ -2991,7 +3048,7 @@
                     </div>
                 </div>
                 ${airHtml}
-                ${sunHtml}
+                ${lifeHtml}
                 <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400 text-center">
                     ${loc.name} · ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 기준
                 </div>

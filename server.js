@@ -584,9 +584,8 @@ const server = http.createServer(async (req, res) => {
         }
 
         const endpoints = {
-            UV: 'getUVIdx', fsn: 'getFsnIdx', sensorytem: 'getSensorytemIdx',
-            frostbite: 'getFrostbiteIdx', heat: 'getHeatFeelingIdx',
-            discomfort: 'getDiscomfortIdx', airDiffusion: 'getAirDiffusionIdx'
+            UV: 'getUVIdxV4', fsn: 'getFsnIdxV4', sensorytem: 'getSenTaIdxV4',
+            airDiffusion: 'getAirDiffusionIdxV4'
         };
         const endpoint = endpoints[type];
         

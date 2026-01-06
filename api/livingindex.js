@@ -29,15 +29,12 @@ module.exports = async function handler(req, res) {
             return res.status(400).json({ error: { code: 'MISSING_PARAM', message: 'type, areaNo, time 파라미터가 필요합니다.' } });
         }
 
-        // 지수 종류별 엔드포인트
+        // 지수 종류별 엔드포인트 (V4 버전)
         const endpoints = {
-            UV: 'getUVIdx',           // 자외선지수
-            fsn: 'getFsnIdx',         // 식중독지수
-            sensorytem: 'getSensorytemIdx',  // 체감온도 (동계)
-            frostbite: 'getFrostbiteIdx',    // 동파가능지수
-            heat: 'getHeatFeelingIdx',       // 더위체감지수 (하계)
-            discomfort: 'getDiscomfortIdx',  // 불쾌지수 (하계)
-            airDiffusion: 'getAirDiffusionIdx' // 대기확산지수
+            UV: 'getUVIdxV4',              // 자외선지수
+            fsn: 'getFsnIdxV4',            // 식중독지수
+            sensorytem: 'getSenTaIdxV4',   // 체감온도 (여름철)
+            airDiffusion: 'getAirDiffusionIdxV4' // 대기확산지수
         };
 
         const endpoint = endpoints[type];
