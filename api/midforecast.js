@@ -61,12 +61,25 @@ module.exports = async function handler(req, res) {
         const tempData = await tempRes.json();
         const landData = await landRes.json();
 
-        // API허브 특유의 에러 형식 처리 ({"result":{"status":403,...}})
+        // API허브 에러 응답 처리 최적화
         if (tempData.result && tempData.result.status !== 200) {
+            console.error('[MidForecast] Temp API Error:', tempData.result.message);
             return res.status(200).json({ error: { code: 'API_ERROR', message: `기온조회: ${tempData.result.message}` } });
         }
         if (landData.result && landData.result.status !== 200) {
+            console.error('[MidForecast] Land API Error:', landData.result.message);
             return res.status(200).json({ error: { code: 'API_ERROR', message: `육상예보: ${landData.result.message}` } });
+        }
+
+        // 응답 데이터가 예상과 다를 경우 (items가 없을 때)
+        if (!tempData.response?.body?.items?.item || !landData.response?.body?.items?.item) {
+            console.log('[MidForecast] No data items found for:', tmFc);
+            return res.status(200).json({ 
+                error: { 
+                    code: 'NO_DATA', 
+                    message: `중기예보 데이터가 아직 생성되지 않았습니다 (${tmFc} 기준).` 
+                } 
+            });
         }
 
         res.status(200).json({ temperature: tempData, land: landData, tmFc });

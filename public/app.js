@@ -2142,11 +2142,18 @@
                 }
 
                 this.data = this.parseCurrentWeather(currentData);
-                // 단기예보 에러는 무시
                 this.forecast = forecastData.error ? { hourly: [], daily: [] } : this.parseForecast(forecastData);
-                // 중기예보 파싱
-                this.midForecast = midData.error ? [] : this.parseMidForecast(midData);
-                console.log('[Weather] Mid forecast:', this.midForecast);
+                // 중기예보 파싱 및 에러 확인
+                if (midData.error) {
+                    console.error('[Weather] Mid forecast error:', midData.error.message);
+                    this.midForecast = [];
+                } else {
+                    this.midForecast = this.parseMidForecast(midData);
+                }
+                console.log('[Weather] Combined status:', {
+                    shortDays: this.forecast.daily?.length || 0,
+                    midDays: this.midForecast?.length || 0
+                });
                 this.render();
             } catch (error) {
                 this.showError('날씨 정보를 불러올 수 없습니다: ' + error.message);
