@@ -3230,6 +3230,7 @@
     const WidgetLayout = {
         editMode: false,
         draggedElement: null,
+        placeholder: null,
         longPressTimer: null,
         touchStartX: 0,
         touchStartY: 0,
@@ -3288,48 +3289,68 @@
         addResizeHandles(card) {
             if (card.querySelector('.resize-handle')) return;
 
-            const handle = document.createElement('div');
-            handle.className = 'resize-handle';
-            handle.innerHTML = '<span class="material-symbols-outlined text-sm">open_in_full</span>';
-            handle.style.cssText = 'position: absolute; bottom: 4px; right: 4px; width: 24px; height: 24px; background: rgba(59, 130, 246, 0.9); border-radius: 4px; cursor: nwse-resize; display: flex; align-items: center; justify-content: center; color: white; z-index: 100;';
+            const edges = ['top', 'right', 'bottom', 'left'];
 
-            let startX, startY, startSpan, startRowSpan;
+            edges.forEach(edge => {
+                const handle = document.createElement('div');
+                handle.className = `resize-handle resize-${edge}`;
 
-            const onMouseMove = (e) => {
-                e.preventDefault();
-                const deltaX = e.clientX - startX;
-                const deltaY = e.clientY - startY;
+                const isVertical = edge === 'top' || edge === 'bottom';
+                const baseStyle = 'position: absolute; background: rgba(59, 130, 246, 0.7); z-index: 100; transition: background 0.2s;';
 
-                // 대략적인 크기 변경 (100px 당 1 span)
-                const newColSpan = Math.max(1, Math.min(4, startSpan + Math.floor(deltaX / 200)));
-                const newRowSpan = Math.max(1, Math.min(3, startRowSpan + Math.floor(deltaY / 150)));
+                if (isVertical) {
+                    handle.style.cssText = `${baseStyle} left: 0; right: 0; height: 4px; cursor: ns-resize; ${edge}: -2px;`;
+                } else {
+                    handle.style.cssText = `${baseStyle} top: 0; bottom: 0; width: 4px; cursor: ew-resize; ${edge}: -2px;`;
+                }
 
-                this.updateWidgetSize(card, newColSpan, newRowSpan);
-            };
+                handle.addEventListener('mouseenter', () => {
+                    handle.style.background = 'rgba(59, 130, 246, 1)';
+                });
+                handle.addEventListener('mouseleave', () => {
+                    handle.style.background = 'rgba(59, 130, 246, 0.7)';
+                });
 
-            const onMouseUp = () => {
-                document.removeEventListener('mousemove', onMouseMove);
-                document.removeEventListener('mouseup', onMouseUp);
-                this.saveLayout();
-            };
+                let startPos, startSpan, startRowSpan;
 
-            handle.addEventListener('mousedown', (e) => {
-                e.stopPropagation();
-                startX = e.clientX;
-                startY = e.clientY;
-                startSpan = this.getWidgetColSpan(card);
-                startRowSpan = this.getWidgetRowSpan(card);
+                const onMouseMove = (e) => {
+                    e.preventDefault();
+                    const delta = isVertical ? (e.clientY - startPos) : (e.clientX - startPos);
 
-                document.addEventListener('mousemove', onMouseMove);
-                document.addEventListener('mouseup', onMouseUp);
+                    if (edge === 'right' || edge === 'left') {
+                        const increment = edge === 'right' ? 1 : -1;
+                        const newColSpan = Math.max(1, Math.min(4, startSpan + Math.floor(delta / 200) * increment));
+                        this.updateWidgetSize(card, newColSpan, startRowSpan);
+                    } else {
+                        const increment = edge === 'bottom' ? 1 : -1;
+                        const newRowSpan = Math.max(1, Math.min(3, startRowSpan + Math.floor(delta / 150) * increment));
+                        this.updateWidgetSize(card, startSpan, newRowSpan);
+                    }
+                };
+
+                const onMouseUp = () => {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                    this.saveLayout();
+                };
+
+                handle.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    startPos = isVertical ? e.clientY : e.clientX;
+                    startSpan = this.getWidgetColSpan(card);
+                    startRowSpan = this.getWidgetRowSpan(card);
+
+                    document.addEventListener('mousemove', onMouseMove);
+                    document.addEventListener('mouseup', onMouseUp);
+                });
+
+                card.appendChild(handle);
             });
-
-            card.appendChild(handle);
         },
 
         removeResizeHandles(card) {
-            const handle = card.querySelector('.resize-handle');
-            if (handle) handle.remove();
+            const handles = card.querySelectorAll('.resize-handle');
+            handles.forEach(handle => handle.remove());
         },
 
         getWidgetColSpan(card) {
@@ -3379,8 +3400,13 @@
             if (!card || e.target.closest('.resize-handle')) return;
 
             this.draggedElement = card;
+            this.createPlaceholder(card);
             card.classList.add('dragging');
-            card.style.opacity = '0.5';
+            card.style.position = 'fixed';
+            card.style.zIndex = '9999';
+            card.style.pointerEvents = 'none';
+            card.style.transform = 'scale(1.05)';
+            card.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.3)';
         },
 
         handleTouchStart(e) {
@@ -3396,8 +3422,13 @@
             // 길게 누르기 감지
             this.longPressTimer = setTimeout(() => {
                 this.draggedElement = card;
+                this.createPlaceholder(card);
                 card.classList.add('dragging');
-                card.style.opacity = '0.5';
+                card.style.position = 'fixed';
+                card.style.zIndex = '9999';
+                card.style.pointerEvents = 'none';
+                card.style.transform = 'scale(1.05)';
+                card.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.3)';
 
                 // 햅틱 피드백 (지원하는 경우)
                 if (navigator.vibrate) {
@@ -3406,17 +3437,43 @@
             }, this.LONG_PRESS_DURATION);
         },
 
+        createPlaceholder(card) {
+            const placeholder = document.createElement('div');
+            placeholder.className = 'widget-placeholder ' + card.className.replace('card', '').replace('dragging', '');
+            placeholder.style.cssText = 'background: rgba(59, 130, 246, 0.1); border: 2px dashed rgba(59, 130, 246, 0.5); border-radius: 8px; min-height: 100px;';
+            card.parentNode.insertBefore(placeholder, card);
+            this.placeholder = placeholder;
+        },
+
+        removePlaceholder() {
+            if (this.placeholder) {
+                this.placeholder.remove();
+                this.placeholder = null;
+            }
+        },
+
         handleDragMove(e) {
             if (!this.draggedElement || !this.editMode) return;
             e.preventDefault();
 
-            const afterElement = this.getDragAfterElement(e.clientY);
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+
+            // 드래그된 요소를 마우스 위치로 이동
+            const rect = this.draggedElement.getBoundingClientRect();
+            this.draggedElement.style.left = `${clientX - rect.width / 2}px`;
+            this.draggedElement.style.top = `${clientY - rect.height / 2}px`;
+
+            // 드롭 위치 찾기
+            const afterElement = this.getDragAfterElement(clientY);
             const container = document.querySelector('.grid');
 
-            if (afterElement == null) {
-                container.appendChild(this.draggedElement);
-            } else {
-                container.insertBefore(this.draggedElement, afterElement);
+            if (this.placeholder) {
+                if (afterElement == null) {
+                    container.appendChild(this.placeholder);
+                } else {
+                    container.insertBefore(this.placeholder, afterElement);
+                }
             }
         },
 
@@ -3442,8 +3499,22 @@
         handleDragEnd(e) {
             if (!this.draggedElement) return;
 
+            // placeholder 위치에 원본 요소 삽입
+            if (this.placeholder && this.placeholder.parentNode) {
+                this.placeholder.parentNode.insertBefore(this.draggedElement, this.placeholder);
+            }
+
+            // 스타일 복원
             this.draggedElement.classList.remove('dragging');
-            this.draggedElement.style.opacity = '';
+            this.draggedElement.style.position = '';
+            this.draggedElement.style.zIndex = '';
+            this.draggedElement.style.pointerEvents = '';
+            this.draggedElement.style.transform = '';
+            this.draggedElement.style.boxShadow = '';
+            this.draggedElement.style.left = '';
+            this.draggedElement.style.top = '';
+
+            this.removePlaceholder();
             this.draggedElement = null;
 
             this.saveLayout();
@@ -3460,7 +3531,7 @@
 
         getDragAfterElement(y) {
             const container = document.querySelector('.grid');
-            const draggableElements = [...container.querySelectorAll('.card:not(.dragging)')];
+            const draggableElements = [...container.querySelectorAll('.card:not(.dragging), .widget-placeholder')];
 
             return draggableElements.reduce((closest, child) => {
                 const box = child.getBoundingClientRect();

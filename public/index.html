@@ -195,18 +195,22 @@
         .card.edit-mode-active {
             transition: all 0.2s ease;
             user-select: none;
+            position: relative;
         }
 
         .card.edit-mode-active:hover {
             box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
-            transform: scale(1.02);
+            transform: scale(1.01);
         }
 
         .card.dragging {
-            opacity: 0.5;
-            transform: scale(1.05);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            z-index: 1000;
+            opacity: 0.95;
+            cursor: grabbing !important;
+            transition: none;
+        }
+
+        .widget-placeholder {
+            transition: all 0.2s ease;
         }
 
         .edit-mode .card {
@@ -236,6 +240,11 @@
 
         .edit-mode .card.edit-mode-active {
             animation: shake 0.5s ease-in-out;
+        }
+
+        /* 크기 조절 핸들 호버 효과 */
+        .resize-handle:hover {
+            background: rgba(59, 130, 246, 1) !important;
         }
     </style>
 </head>
