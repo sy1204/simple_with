@@ -1213,8 +1213,9 @@
     // ===== 단위 변환 =====
     const Converter = {
         type: Storage.get('convType', 'currency'),
+        exchangeDate: null,
         units: {
-            currency: { from: 'USD', to: 'KRW', options: ['USD', 'EUR', 'KRW', 'JPY', 'CNY'], rates: { USD: 1, EUR: 0.92, KRW: 1350, JPY: 157, CNY: 7.2 } },
+            currency: { from: 'USD', to: 'KRW', options: ['USD', 'EUR', 'KRW', 'JPY', 'CNY', 'GBP'], rates: { USD: 1, EUR: 0.92, KRW: 1350, JPY: 157, CNY: 7.2, GBP: 0.79 } },
             length: { from: 'cm', to: 'm', options: ['mm', 'cm', 'm', 'km', 'in', 'ft', 'yd', 'mi'], rates: { mm: 1000, cm: 100, m: 1, km: 0.001, in: 39.37, ft: 3.281, yd: 1.094, mi: 0.000621 } },
             area: { from: '㎡', to: '평', options: ['㎡', '평', 'ft²', 'ac'], rates: { '㎡': 1, '평': 0.3025, 'ft²': 10.764, 'ac': 0.000247 } },
             weight: { from: 'kg', to: 'g', options: ['mg', 'g', 'kg', 't', 'lb', 'oz'], rates: { mg: 1000000, g: 1000, kg: 1, t: 0.001, lb: 2.2046, oz: 35.274 } },
@@ -1222,6 +1223,7 @@
         },
         init() {
             this.render();
+            this.loadExchangeRates(); // 실시간 환율 로드
             document.querySelectorAll('.conv-type').forEach(btn => {
                 btn.addEventListener('click', () => {
                     this.type = btn.dataset.type;
@@ -1230,6 +1232,31 @@
                     this.render();
                 });
             });
+        },
+        async loadExchangeRates() {
+            try {
+                const res = await fetch('/api/exchange');
+                const data = await res.json();
+                if (data.rates) {
+                    this.units.currency.rates = data.rates;
+                    this.exchangeDate = data.date;
+                    // 환율 탭이 활성화되어 있으면 다시 변환
+                    if (this.type === 'currency') {
+                        this.convert();
+                        this.updateExchangeInfo();
+                    }
+                    console.log('[Exchange] 실시간 환율 로드 완료:', data.date);
+                }
+            } catch (e) {
+                console.error('[Exchange] 환율 로드 실패:', e);
+            }
+        },
+        updateExchangeInfo() {
+            const infoEl = document.getElementById('exchange-info');
+            if (infoEl && this.exchangeDate) {
+                infoEl.textContent = `환율 기준: ${this.exchangeDate}`;
+                infoEl.classList.remove('hidden');
+            }
         },
         updateButtons() {
             document.querySelectorAll('.conv-type').forEach(btn => {
@@ -1252,7 +1279,9 @@
                 </div>`;
             };
 
+            const isCurrency = this.type === 'currency';
             container.innerHTML = `
+                ${isCurrency ? `<div id="exchange-info" class="text-[10px] text-slate-400 mb-2 text-right ${this.exchangeDate ? '' : 'hidden'}">환율 기준: ${this.exchangeDate || ''}</div>` : ''}
                 <div class="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800 transition-colors">
                     <div class="text-[10px] text-slate-400 mb-2 font-medium">From</div>
                     ${createUnitChips(u.from, 'from')}

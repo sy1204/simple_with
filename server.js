@@ -494,6 +494,43 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // 실시간 환율 API
+    if (pathname === '/api/exchange') {
+        try {
+            const apiResponse = await fetch('https://api.frankfurter.app/latest?from=USD&to=EUR,KRW,JPY,CNY,GBP');
+            
+            if (!apiResponse.ok) {
+                throw new Error(`API 응답 오류: ${apiResponse.status}`);
+            }
+
+            const data = await apiResponse.json();
+            
+            const rates = {
+                USD: 1,
+                EUR: data.rates.EUR || 0.92,
+                KRW: data.rates.KRW || 1350,
+                JPY: data.rates.JPY || 157,
+                CNY: data.rates.CNY || 7.2,
+                GBP: data.rates.GBP || 0.79
+            };
+
+            console.log(`[Exchange] Rates loaded: ${data.date}`);
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ success: true, date: data.date, base: 'USD', rates }));
+        } catch (error) {
+            console.error('[Exchange] Error:', error);
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({
+                success: false,
+                date: new Date().toISOString().split('T')[0],
+                base: 'USD',
+                rates: { USD: 1, EUR: 0.92, KRW: 1350, JPY: 157, CNY: 7.2, GBP: 0.79 },
+                error: error.message
+            }));
+        }
+        return;
+    }
+
     // 정적 파일 서빙
     let filePath = pathname === '/' ? '/index.html' : pathname;
 
