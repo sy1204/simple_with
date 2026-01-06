@@ -299,6 +299,32 @@
             grid-auto-flow: dense;
         }
 
+        /* 고정 단위 그리드 시스템 - 각 위젯이 독립적으로 높이 조절 가능 */
+        #main-content>.grid {
+            grid-auto-rows: 200px;
+            /* 기본 행 높이 단위 */
+            align-items: stretch;
+        }
+
+        /* 위젯 높이를 row-span에 맞게 조절 */
+        .card {
+            min-height: 100%;
+            /* 할당된 그리드 영역 채우기 */
+        }
+
+        /* row-span에 따른 실제 높이 */
+        .card.row-span-1 {
+            min-height: 200px;
+        }
+
+        .card.row-span-2 {
+            min-height: 100%;
+        }
+
+        .card.row-span-3 {
+            min-height: 100%;
+        }
+
         /* 편집 모드에서 그리드 가시화 */
         .grid.edit-mode {
             background-image:
@@ -407,7 +433,8 @@
             <!-- Main Content -->
             <div id="main-content"
                 class="flex-1 overflow-y-auto p-4 lg:p-8 pt-28 md:pt-32 lg:pt-36 bg-background-light dark:bg-background-dark scroll-pt-28 md:scroll-pt-32 lg:scroll-pt-36">
-                <div class="max-w-[1600px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 pb-10">
+                <div class="max-w-[1600px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 pb-10"
+                    style="grid-auto-rows: 200px;">
 
                     <!-- 시간 위젯 (Time Widget) -->
                     <div id="time-widget"
@@ -703,7 +730,7 @@
 
                     <!-- Unit Converter Card -->
                     <div id="converter"
-                        class="card group relative col-span-1 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col gap-4">
+                        class="card group relative col-span-1 row-span-1 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col gap-4">
                         <h3 class="text-sm font-semibold text-slate-500 flex items-center gap-2">
                             <span class="material-symbols-outlined text-lg">currency_exchange</span>단위 변환
                         </h3>
