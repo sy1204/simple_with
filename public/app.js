@@ -2206,6 +2206,19 @@
                 });
             });
 
+            // 출처 정보 버튼
+            document.getElementById('weather-source-info')?.addEventListener('click', () => {
+                document.getElementById('weather-source-popup')?.classList.remove('hidden');
+            });
+            document.getElementById('weather-source-close')?.addEventListener('click', () => {
+                document.getElementById('weather-source-popup')?.classList.add('hidden');
+            });
+            document.getElementById('weather-source-popup')?.addEventListener('click', (e) => {
+                if (e.target.id === 'weather-source-popup') {
+                    document.getElementById('weather-source-popup')?.classList.add('hidden');
+                }
+            });
+
             // 동 검색
             const searchInput = document.getElementById('weather-search-input');
             let searchTimeout;
