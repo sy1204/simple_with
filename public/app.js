@@ -1027,7 +1027,7 @@
 
             // 버튼 생성 (괄호 추가, 레이아웃 수정)
             const buttons = [
-                { t: 'AC', cls: 'gray' }, { t: 'DEL', cls: 'gray' }, { t: '(', cls: 'gray' }, { t: ')', cls: 'gray' },
+                { t: 'AC', cls: 'gray' }, { t: '⌫', v: 'DEL', cls: 'gray' }, { t: '(', cls: 'gray' }, { t: ')', cls: 'gray' },
                 { t: '7' }, { t: '8' }, { t: '9' }, { t: '+', cls: 'orange' },
                 { t: '4' }, { t: '5' }, { t: '6' }, { t: '-', cls: 'orange' },
                 { t: '1' }, { t: '2' }, { t: '3' }, { t: '×', cls: 'orange' },
@@ -1050,7 +1050,7 @@
                 else if (b.cls === 'wide') cls += 'col-span-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-lg'; // 여기서는 사용 안 함
                 else cls += 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm border border-slate-100 dark:border-slate-700'; // 숫자
 
-                container.innerHTML += `<button class="${cls}" data-val="${b.t}">${b.t}</button>`;
+                container.innerHTML += `<button class="${cls}" data-val="${b.v || b.t}">${b.t}</button>`;
             });
 
             // 이벤트 리스너
