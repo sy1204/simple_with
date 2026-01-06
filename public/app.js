@@ -1260,7 +1260,7 @@
             const container = document.getElementById('finance-content');
             if (this.mode === 'interest') {
                 container.innerHTML = `
-                    <div class="flex-1 space-y-3">
+                    <div class="flex-1 min-w-0 space-y-3">
                         <div class="space-y-1"><label class="text-xs font-medium text-slate-500">예치금 (원금)</label><div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">₩</span><input id="fin-principal" class="w-full pl-7 bg-background-light dark:bg-[#111822] rounded-lg border-none text-sm font-semibold focus:ring-2 focus:ring-primary h-9" type="text" value="10,000,000" /></div></div>
                         <div class="flex gap-2">
                             <div class="space-y-1 flex-1 max-w-[45%]">
@@ -1280,25 +1280,25 @@
                         </div>
                         <button id="fin-calc" class="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium py-2 rounded-lg text-sm hover:opacity-90">계산하기</button>
                     </div>
-                    <div class="flex-1 bg-background-light dark:bg-[#111822] rounded-lg p-4 flex flex-col justify-center">
-                        <div id="fin-result-info" class="text-[10px] text-slate-400 text-right mb-2"></div>
-                        <div class="flex items-center justify-between mb-2 pb-2 border-b border-slate-200 dark:border-slate-700"><span class="text-xs text-slate-500">이자</span><span id="fin-interest" class="text-base font-bold text-emerald-500">-</span></div>
-                        <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-200 dark:border-slate-700"><span class="text-xs text-slate-500">최종 수령액</span><span id="fin-total" class="text-lg font-bold">-</span></div>
-                        <div id="fin-yearly-info" class="text-xs text-slate-400 hidden"></div>
+                    <div class="flex-1 min-w-0 bg-background-light dark:bg-[#111822] rounded-lg p-4 flex flex-col justify-center overflow-hidden">
+                        <div id="fin-result-info" class="text-[10px] text-slate-400 text-right mb-2 truncate"></div>
+                        <div class="flex items-center justify-between mb-2 pb-2 border-b border-slate-200 dark:border-slate-700"><span class="text-xs text-slate-500">이자</span><span id="fin-interest" class="text-base font-bold text-emerald-500 truncate">-</span></div>
+                        <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-200 dark:border-slate-700"><span class="text-xs text-slate-500">최종 수령액</span><span id="fin-total" class="text-lg font-bold truncate">-</span></div>
+                        <div id="fin-yearly-info" class="text-xs text-slate-400 hidden truncate"></div>
                     </div>`;
                 document.getElementById('fin-calc').addEventListener('click', () => this.calcInterest());
                 document.getElementById('fin-rate-toggle').addEventListener('click', () => this.toggleRateUnit());
                 document.getElementById('fin-period-toggle').addEventListener('click', () => this.togglePeriodUnit());
             } else {
                 container.innerHTML = `
-                    <div class="flex-1 space-y-3">
+                    <div class="flex-1 min-w-0 space-y-3">
                         <div class="space-y-1"><label class="text-xs font-medium text-slate-500">원래 가격</label><div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">₩</span><input id="fin-original" class="w-full pl-7 bg-background-light dark:bg-[#111822] rounded-lg border-none text-sm font-semibold focus:ring-2 focus:ring-primary h-9" type="text" value="100,000" /></div></div>
                         <div class="space-y-1"><label class="text-xs font-medium text-slate-500">할인율 (%)</label><input id="fin-discount-rate" class="w-full bg-background-light dark:bg-[#111822] rounded-lg border-none text-sm font-semibold focus:ring-2 focus:ring-primary h-9" type="text" value="20" /></div>
                         <button id="fin-calc" class="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium py-2 rounded-lg text-sm hover:opacity-90">계산하기</button>
                     </div>
-                    <div class="flex-1 bg-background-light dark:bg-[#111822] rounded-lg p-4 flex flex-col justify-center">
-                        <div class="flex items-center justify-between mb-3 border-b border-slate-200 dark:border-slate-700 pb-2"><span class="text-xs text-slate-500">할인 금액</span><span id="fin-saved" class="text-base font-bold text-emerald-500">-</span></div>
-                        <div class="flex items-center justify-between"><span class="text-xs font-medium">최종 가격</span><span id="fin-final" class="text-lg font-bold">-</span></div>
+                    <div class="flex-1 min-w-0 bg-background-light dark:bg-[#111822] rounded-lg p-4 flex flex-col justify-center overflow-hidden">
+                        <div class="flex items-center justify-between mb-3 border-b border-slate-200 dark:border-slate-700 pb-2"><span class="text-xs text-slate-500">할인 금액</span><span id="fin-saved" class="text-base font-bold text-emerald-500 truncate">-</span></div>
+                        <div class="flex items-center justify-between"><span class="text-xs font-medium">최종 가격</span><span id="fin-final" class="text-lg font-bold truncate">-</span></div>
                     </div>`;
                 document.getElementById('fin-calc').addEventListener('click', () => this.calcDiscount());
             }
