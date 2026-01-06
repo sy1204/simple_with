@@ -325,6 +325,45 @@
             min-height: 100%;
         }
 
+        /* 데스크톱 레이아웃을 위한 위젯 순서 */
+        @media (min-width: 1024px) {
+            #time-widget {
+                order: 1;
+            }
+
+            #memo {
+                order: 2;
+            }
+
+            #todo {
+                order: 3;
+            }
+
+            #calendar {
+                order: 4;
+            }
+
+            #weather {
+                order: 5;
+            }
+
+            #calculator {
+                order: 6;
+            }
+
+            #converter {
+                order: 7;
+            }
+
+            #finance {
+                order: 8;
+            }
+
+            #dictionary {
+                order: 9;
+            }
+        }
+
         /* 편집 모드에서 그리드 가시화 */
         .grid.edit-mode {
             background-image:
@@ -438,7 +477,7 @@
 
                     <!-- 시간 위젯 (Time Widget) -->
                     <div id="time-widget"
-                        class="card group relative col-span-1 lg:col-span-2 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 overflow-hidden flex flex-col">
+                        class="card group relative col-span-1 lg:col-span-2 row-span-1 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 overflow-hidden flex flex-col">
                         <div class="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
                             <span class="material-symbols-outlined text-[120px]">schedule</span>
                         </div>
@@ -465,7 +504,7 @@
 
                     <!-- Calendar Card -->
                     <div id="calendar"
-                        class="card group relative col-span-1 lg:col-span-2 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
+                        class="card group relative col-span-1 lg:col-span-2 row-span-1 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
                         <div class="flex justify-between items-center mb-3">
                             <h3 class="text-lg font-bold flex items-center gap-2">
                                 <span class="material-symbols-outlined text-primary">calendar_month</span>
@@ -525,7 +564,7 @@
 
                     <!-- Weather Card -->
                     <div id="weather"
-                        class="card group relative col-span-1 lg:col-span-2 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
+                        class="card group relative col-span-1 lg:col-span-2 row-span-3 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-lg font-bold flex items-center gap-2">
                                 <span class="material-symbols-outlined text-primary">cloud</span>날씨
@@ -730,7 +769,7 @@
 
                     <!-- Unit Converter Card -->
                     <div id="converter"
-                        class="card group relative col-span-1 row-span-1 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col gap-4">
+                        class="card group relative col-span-1 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col gap-4">
                         <h3 class="text-sm font-semibold text-slate-500 flex items-center gap-2">
                             <span class="material-symbols-outlined text-lg">currency_exchange</span>단위 변환
                         </h3>
@@ -752,7 +791,7 @@
 
                     <!-- Finance Card -->
                     <div id="finance"
-                        class="card group relative col-span-1 lg:col-span-2 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col gap-4">
+                        class="card group relative col-span-1 lg:col-span-2 row-span-1 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col gap-4">
                         <div class="flex items-center justify-between">
                             <h3 class="text-lg font-bold flex items-center gap-2">
                                 <span class="material-symbols-outlined text-primary">savings</span>금융 계산기
@@ -770,7 +809,7 @@
 
                     <!-- Dictionary Card -->
                     <div id="dictionary"
-                        class="card group relative col-span-1 lg:col-span-2 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
+                        class="card group relative col-span-1 lg:col-span-2 row-span-3 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
                         <!-- Header -->
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-lg font-bold flex items-center gap-2">
