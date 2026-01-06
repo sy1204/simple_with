@@ -1325,8 +1325,19 @@
         updateExchangeInfo() {
             const infoEl = document.getElementById('exchange-info');
             if (infoEl && this.exchangeDate) {
-                infoEl.textContent = `환율 기준: ${this.exchangeDate}`;
+                infoEl.innerHTML = `환율 기준: ${this.exchangeDate}`;
                 infoEl.classList.remove('hidden');
+            }
+        },
+        
+        async refreshExchangeRates() {
+            const refreshBtn = document.getElementById('exchange-refresh');
+            if (refreshBtn) {
+                refreshBtn.classList.add('animate-spin');
+            }
+            await this.loadExchangeRates();
+            if (refreshBtn) {
+                refreshBtn.classList.remove('animate-spin');
             }
         },
         updateButtons() {
@@ -1352,7 +1363,12 @@
 
             const isCurrency = this.type === 'currency';
             container.innerHTML = `
-                ${isCurrency ? `<div id="exchange-info" class="text-[10px] text-slate-400 mb-2 text-right ${this.exchangeDate ? '' : 'hidden'}">환율 기준: ${this.exchangeDate || ''}</div>` : ''}
+                ${isCurrency ? `<div id="exchange-info" class="flex items-center justify-end gap-2 text-[10px] text-slate-400 mb-2 ${this.exchangeDate ? '' : 'hidden'}">
+                    <span>환율 기준: ${this.exchangeDate || ''}</span>
+                    <button id="exchange-refresh" class="p-0.5 hover:text-primary transition-colors" title="환율 새로고침">
+                        <span class="material-symbols-outlined text-sm">refresh</span>
+                    </button>
+                </div>` : ''}
                 <div class="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800 transition-colors">
                     <div class="text-[10px] text-slate-400 mb-2 font-medium">From</div>
                     ${createUnitChips(u.from, 'from')}
@@ -1387,6 +1403,13 @@
             input.focus(); // 탭 전환 시 입력창 포커스 (편의성)
 
             document.getElementById('conv-swap').addEventListener('click', () => this.swap());
+            
+            // 환율 새로고침 버튼
+            const refreshBtn = document.getElementById('exchange-refresh');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => this.refreshExchangeRates());
+            }
+            
             this.convert();
         },
         convert() {
