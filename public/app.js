@@ -1227,6 +1227,7 @@
     // ===== 금융 계산기 =====
     const Finance = {
         mode: 'interest',
+        periodUnit: 'year', // 'year' or 'month'
         init() {
             this.render();
             document.getElementById('finance-interest').addEventListener('click', () => { this.mode = 'interest'; this.render(); this.updateButtons(); });
@@ -1236,20 +1237,41 @@
             document.getElementById('finance-interest').className = this.mode === 'interest' ? 'px-3 py-1 text-xs font-bold bg-white dark:bg-card-dark rounded shadow-sm' : 'px-3 py-1 text-xs font-medium text-slate-500';
             document.getElementById('finance-discount').className = this.mode === 'discount' ? 'px-3 py-1 text-xs font-bold bg-white dark:bg-card-dark rounded shadow-sm' : 'px-3 py-1 text-xs font-medium text-slate-500';
         },
+        togglePeriodUnit() {
+            this.periodUnit = this.periodUnit === 'year' ? 'month' : 'year';
+            const btn = document.getElementById('fin-period-toggle');
+            const label = document.getElementById('fin-period-label');
+            if (btn && label) {
+                btn.textContent = this.periodUnit === 'year' ? '년' : '월';
+                label.textContent = `기간 (${this.periodUnit === 'year' ? '년' : '개월'})`;
+            }
+        },
         render() {
             const container = document.getElementById('finance-content');
             if (this.mode === 'interest') {
                 container.innerHTML = `
                     <div class="flex-1 space-y-3">
                         <div class="space-y-1"><label class="text-xs font-medium text-slate-500">예치금 (원금)</label><div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">₩</span><input id="fin-principal" class="w-full pl-7 bg-background-light dark:bg-[#111822] rounded-lg border-none text-sm font-semibold focus:ring-2 focus:ring-primary h-9" type="text" value="10,000,000" /></div></div>
-                        <div class="flex gap-3"><div class="space-y-1 flex-1"><label class="text-xs font-medium text-slate-500">금리 (%)</label><input id="fin-rate" class="w-full bg-background-light dark:bg-[#111822] rounded-lg border-none text-sm font-semibold focus:ring-2 focus:ring-primary h-9" type="text" value="3.5" /></div><div class="space-y-1 flex-1"><label class="text-xs font-medium text-slate-500">기간 (년)</label><input id="fin-years" class="w-full bg-background-light dark:bg-[#111822] rounded-lg border-none text-sm font-semibold focus:ring-2 focus:ring-primary h-9" type="text" value="1" /></div></div>
+                        <div class="flex gap-3">
+                            <div class="space-y-1 flex-1"><label class="text-xs font-medium text-slate-500">연이율 (%)</label><input id="fin-rate" class="w-full bg-background-light dark:bg-[#111822] rounded-lg border-none text-sm font-semibold focus:ring-2 focus:ring-primary h-9" type="text" value="3.5" /></div>
+                            <div class="space-y-1 flex-1">
+                                <label id="fin-period-label" class="text-xs font-medium text-slate-500">기간 (${this.periodUnit === 'year' ? '년' : '개월'})</label>
+                                <div class="flex gap-1">
+                                    <input id="fin-period" class="flex-1 bg-background-light dark:bg-[#111822] rounded-lg border-none text-sm font-semibold focus:ring-2 focus:ring-primary h-9" type="text" value="${this.periodUnit === 'year' ? '1' : '12'}" />
+                                    <button id="fin-period-toggle" class="px-3 h-9 bg-primary text-white text-xs font-bold rounded-lg hover:bg-blue-600 transition-colors">${this.periodUnit === 'year' ? '년' : '월'}</button>
+                                </div>
+                            </div>
+                        </div>
                         <button id="fin-calc" class="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium py-2 rounded-lg text-sm hover:opacity-90">계산하기</button>
                     </div>
                     <div class="flex-1 bg-background-light dark:bg-[#111822] rounded-lg p-4 flex flex-col justify-center">
-                        <div class="flex items-center justify-between mb-3 border-b border-slate-200 dark:border-slate-700 pb-2"><span class="text-xs text-slate-500">총 이자 수익</span><span id="fin-interest" class="text-base font-bold text-emerald-500">-</span></div>
-                        <div class="flex items-center justify-between"><span class="text-xs font-medium">최종 수령액</span><span id="fin-total" class="text-lg font-bold">-</span></div>
+                        <div id="fin-result-period" class="text-[10px] text-slate-400 text-right mb-2"></div>
+                        <div class="flex items-center justify-between mb-2 pb-2 border-b border-slate-200 dark:border-slate-700"><span class="text-xs text-slate-500">이자 수익</span><span id="fin-interest" class="text-base font-bold text-emerald-500">-</span></div>
+                        <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-200 dark:border-slate-700"><span class="text-xs text-slate-500">최종 수령액</span><span id="fin-total" class="text-lg font-bold">-</span></div>
+                        <div id="fin-yearly-info" class="text-xs text-slate-400 hidden"></div>
                     </div>`;
                 document.getElementById('fin-calc').addEventListener('click', () => this.calcInterest());
+                document.getElementById('fin-period-toggle').addEventListener('click', () => this.togglePeriodUnit());
             } else {
                 container.innerHTML = `
                     <div class="flex-1 space-y-3">
@@ -1266,11 +1288,30 @@
         },
         calcInterest() {
             const p = parseFloat(document.getElementById('fin-principal').value.replace(/,/g, ''));
-            const r = parseFloat(document.getElementById('fin-rate').value) / 100;
-            const y = parseFloat(document.getElementById('fin-years').value);
-            const interest = Math.round(p * r * y);
-            document.getElementById('fin-interest').textContent = '+' + interest.toLocaleString();
-            document.getElementById('fin-total').textContent = (p + interest).toLocaleString() + '원';
+            const r = parseFloat(document.getElementById('fin-rate').value) / 100; // 연이율
+            const period = parseFloat(document.getElementById('fin-period').value);
+            
+            // 기간을 년 단위로 환산
+            const years = this.periodUnit === 'year' ? period : period / 12;
+            const interest = Math.round(p * r * years);
+            const total = p + interest;
+            
+            document.getElementById('fin-interest').textContent = '+' + interest.toLocaleString() + '원';
+            document.getElementById('fin-total').textContent = total.toLocaleString() + '원';
+            
+            // 기간 정보 표시
+            const periodInfo = document.getElementById('fin-result-period');
+            if (this.periodUnit === 'month') {
+                periodInfo.textContent = `${period}개월 (${(period/12).toFixed(1)}년)`;
+                // 연간 환산 정보 표시
+                const yearlyInterest = Math.round(p * r);
+                const yearlyInfo = document.getElementById('fin-yearly-info');
+                yearlyInfo.innerHTML = `📊 1년 기준: 이자 <span class="text-emerald-500 font-medium">+${yearlyInterest.toLocaleString()}원</span>`;
+                yearlyInfo.classList.remove('hidden');
+            } else {
+                periodInfo.textContent = `${period}년`;
+                document.getElementById('fin-yearly-info').classList.add('hidden');
+            }
         },
         calcDiscount() {
             const o = parseFloat(document.getElementById('fin-original').value.replace(/,/g, ''));
