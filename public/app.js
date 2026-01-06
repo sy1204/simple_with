@@ -2150,17 +2150,23 @@
             const today = kstNow.toISOString().slice(0, 10).replace(/-/g, '');
             console.log('[Weather] Today:', today, 'Current hour:', currentHour);
             
-            // 현재 시간 이후의 예보 (오늘+내일 포함, 최대 8개)
+            // 현재 시간부터 48시간까지 시간대별 예보
             const nowStr = `${today}${String(currentHour).padStart(2, '0')}00`;
+            
+            // 48시간 후 계산
+            const futureTime = new Date(kstNow.getTime() + 48 * 60 * 60 * 1000);
+            const futureDate = futureTime.toISOString().slice(0, 10).replace(/-/g, '');
+            const futureHour = futureTime.getUTCHours();
+            const futureStr = `${futureDate}${String(futureHour).padStart(2, '0')}00`;
+
             const hourly = forecasts
                 .filter(f => {
                     const fStr = `${f.date}${f.time}`;
-                    return fStr >= nowStr && f.TMP; // TMP가 있는 것만
-                })
-                .slice(0, 8);
+                    return fStr >= nowStr && fStr <= futureStr && f.TMP;
+                });
             console.log('[Weather] Hourly forecasts:', hourly.length);
 
-            // 일별 (최저/최고 기온)
+            // 일별 (최저/최고 기온) - 모레부터 시작
             const byDate = {};
             forecasts.forEach(f => {
                 if (!byDate[f.date]) {
@@ -2173,6 +2179,10 @@
                 if (f.POP) byDate[f.date].pop.push(parseInt(f.POP));
             });
 
+            // 모레(2일 후) 날짜 계산
+            const dayAfterTomorrow = new Date(kstNow.getTime() + 2 * 24 * 60 * 60 * 1000);
+            const startDate = dayAfterTomorrow.toISOString().slice(0, 10).replace(/-/g, '');
+
             const daily = Object.values(byDate)
                 .map(d => ({
                     date: d.date,
@@ -2181,8 +2191,8 @@
                     sky: d.sky.length ? d.sky[Math.floor(d.sky.length / 2)] : '1',
                     pop: d.pop.length ? Math.max(...d.pop) : 0
                 }))
-                .filter(d => d.min !== null && d.max !== null)
-                .slice(0, 5);
+                .filter(d => d.min !== null && d.max !== null && d.date >= startDate)
+                .slice(0, 10);
 
             return { hourly, daily };
         },
@@ -2265,22 +2275,28 @@
             const condition = this.getWeatherName(pty, '1');
             const feelsLike = this.calcFeelsLike(temp, wind, humidity);
 
-            // 시간대별 예보 HTML
+            // 시간대별 예보 HTML (48시간)
             let hourlyHtml = '';
             if (this.forecast?.hourly?.length) {
+                // 날짜별로 구분하여 표시
+                let lastDate = '';
                 hourlyHtml = `
                     <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                        <p class="text-xs font-medium text-slate-500 mb-3">⏰ 오늘 시간대별</p>
-                        <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                        <p class="text-xs font-medium text-slate-500 mb-3">⏰ 48시간 예보</p>
+                        <div class="flex gap-1.5 overflow-x-auto pb-2 scrollbar-thin">
                             ${this.forecast.hourly.map(h => {
                                 const hour = h.time.slice(0, 2);
                                 const hIcon = this.getWeatherIcon(h.PTY, h.SKY);
+                                const showDate = h.date !== lastDate;
+                                lastDate = h.date;
+                                const dateLabel = showDate ? this.getDayName(h.date).slice(0, 2) : '';
                                 return `
-                                    <div class="flex-shrink-0 flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 min-w-[52px]">
+                                    <div class="flex-shrink-0 flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800/50 min-w-[44px] ${showDate ? 'border-l-2 border-primary/30' : ''}">
+                                        ${showDate ? `<span class="text-[9px] text-primary font-bold">${dateLabel}</span>` : ''}
                                         <span class="text-[10px] text-slate-500">${hour}시</span>
-                                        <span class="material-symbols-outlined text-lg text-primary">${hIcon}</span>
+                                        <span class="material-symbols-outlined text-base text-primary">${hIcon}</span>
                                         <span class="text-xs font-bold">${h.TMP || '-'}°</span>
-                                        ${h.POP && h.POP !== '0' ? `<span class="text-[10px] text-blue-500">💧${h.POP}%</span>` : ''}
+                                        ${h.POP && h.POP !== '0' ? `<span class="text-[9px] text-blue-500">💧${h.POP}%</span>` : ''}
                                     </div>
                                 `;
                             }).join('')}
@@ -2289,12 +2305,12 @@
                 `;
             }
 
-            // 주간 예보 HTML
+            // 주간 예보 HTML (모레부터)
             let dailyHtml = '';
-            if (this.forecast?.daily?.length > 1) {
+            if (this.forecast?.daily?.length) {
                 dailyHtml = `
                     <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                        <p class="text-xs font-medium text-slate-500 mb-3">📅 주간 예보</p>
+                        <p class="text-xs font-medium text-slate-500 mb-3">📅 주간 예보 (모레~)</p>
                         <div class="space-y-2">
                             ${this.forecast.daily.map(d => {
                                 const dIcon = this.getWeatherIcon(null, d.sky);
