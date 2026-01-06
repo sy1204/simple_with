@@ -1751,7 +1751,6 @@
             { name: '서울', nx: 60, ny: 127, regId: '11B00000', stnId: '108' }
         ]),
         currentIdx: Storage.get('weatherCurrentIdx', 0),
-        dailyDays: Storage.get('weatherDailyDays', 10), // 주간예보 일수 (기본 10일)
         data: null,
         midForecast: null, // 중기예보 데이터
 
@@ -2461,23 +2460,15 @@
                 `;
             }
 
-            // 주간 예보 HTML (단기 + 중기 합치기)
+            // 주간 예보 HTML (단기 + 중기 합치기, 7일 고정)
             let dailyHtml = '';
             const combinedDaily = this.getCombinedDailyForecast();
             if (combinedDaily.length) {
                 dailyHtml = `
                     <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                        <div class="flex items-center justify-between mb-3">
-                            <p class="text-xs font-medium text-slate-500">📅 주간 예보</p>
-                            <select id="weather-daily-days" class="text-xs bg-slate-100 dark:bg-slate-800 border-none rounded px-2 py-1">
-                                <option value="3" ${this.dailyDays === 3 ? 'selected' : ''}>3일</option>
-                                <option value="5" ${this.dailyDays === 5 ? 'selected' : ''}>5일</option>
-                                <option value="7" ${this.dailyDays === 7 ? 'selected' : ''}>7일</option>
-                                <option value="10" ${this.dailyDays === 10 ? 'selected' : ''}>10일</option>
-                            </select>
-                        </div>
+                        <p class="text-xs font-medium text-slate-500 mb-3">📅 주간 예보</p>
                         <div class="space-y-2">
-                            ${combinedDaily.slice(0, this.dailyDays).map(d => {
+                            ${combinedDaily.slice(0, 7).map(d => {
                                 const dIcon = this.getMidWeatherIcon(d.sky);
                                 return `
                                     <div class="flex items-center justify-between py-1">
@@ -2530,12 +2521,6 @@
                 ${dailyHtml}
             `;
 
-            // 주간예보 일수 선택 이벤트
-            document.getElementById('weather-daily-days')?.addEventListener('change', (e) => {
-                this.dailyDays = parseInt(e.target.value);
-                Storage.set('weatherDailyDays', this.dailyDays);
-                this.render();
-            });
         },
 
         showError(message) {
