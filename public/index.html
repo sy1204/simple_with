@@ -487,26 +487,60 @@
 
                     <!-- Weather Card -->
                     <div id="weather"
-                        class="card group relative col-span-1 lg:col-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
+                        class="card group relative col-span-1 lg:col-span-2 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-lg font-bold flex items-center gap-2">
                                 <span class="material-symbols-outlined text-primary">cloud</span>날씨
                             </h3>
-                            <select id="weather-city"
-                                class="text-sm bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-primary">
-                                <option value="60,127">서울</option>
-                                <option value="97,74">부산</option>
-                                <option value="89,90">대구</option>
-                                <option value="55,124">인천</option>
-                                <option value="67,100">대전</option>
-                                <option value="62,123">판교</option>
-                                <option value="52,38">제주</option>
-                            </select>
+                            <div class="flex items-center gap-2">
+                                <!-- 즐겨찾기 버튼들 -->
+                                <div id="weather-favorites" class="flex gap-1">
+                                    <!-- JS에서 렌더링 -->
+                                </div>
+                                <!-- 새로고침 버튼 -->
+                                <button id="weather-refresh-btn" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="새로고침">
+                                    <span class="material-symbols-outlined text-lg text-slate-500">refresh</span>
+                                </button>
+                                <!-- 설정 버튼 -->
+                                <button id="weather-settings-btn" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="지역 설정">
+                                    <span class="material-symbols-outlined text-lg text-slate-500">settings</span>
+                                </button>
+                            </div>
                         </div>
-                        <div id="weather-content" class="flex-1">
+                        <div id="weather-content" class="flex-1 overflow-y-auto">
                             <div class="flex flex-col items-center justify-center h-full text-slate-400 py-8">
                                 <span class="material-symbols-outlined text-4xl mb-2 animate-pulse">cloud_sync</span>
                                 <p class="text-sm">날씨 정보를 불러오는 중...</p>
+                            </div>
+                        </div>
+                        <!-- 지역 설정 모달 -->
+                        <div id="weather-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                            <div class="bg-card-light dark:bg-card-dark rounded-xl shadow-xl max-w-md w-full max-h-[80vh] overflow-hidden">
+                                <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                                    <h4 class="font-bold text-lg">📍 자주 찾는 지역 설정</h4>
+                                    <button id="weather-modal-close" class="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                                        <span class="material-symbols-outlined">close</span>
+                                    </button>
+                                </div>
+                                <div class="p-4 space-y-4">
+                                    <!-- 동 검색 -->
+                                    <div class="relative">
+                                        <input id="weather-search-input" type="text" placeholder="동 이름 검색 (예: 역삼동, 서초동...)"
+                                            class="w-full bg-background-light dark:bg-[#111822] border border-slate-200 dark:border-slate-700 rounded-lg text-sm px-4 py-2.5 pr-10 focus:ring-2 focus:ring-primary/50 focus:border-primary" />
+                                        <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                                    </div>
+                                    <!-- 검색 결과 -->
+                                    <div id="weather-search-results" class="max-h-40 overflow-y-auto space-y-1 hidden">
+                                        <!-- JS에서 렌더링 -->
+                                    </div>
+                                    <!-- 즐겨찾기 목록 -->
+                                    <div>
+                                        <p class="text-xs font-medium text-slate-500 mb-2">⭐ 즐겨찾기 (최대 3곳)</p>
+                                        <div id="weather-favorite-list" class="space-y-2">
+                                            <!-- JS에서 렌더링 -->
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

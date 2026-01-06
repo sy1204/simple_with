@@ -33,28 +33,62 @@ module.exports = async function handler(req, res) {
         const kstOffset = 9 * 60 * 60 * 1000;
         const koreaTime = new Date(now.getTime() + kstOffset);
         
-        const year = koreaTime.getUTCFullYear();
-        const month = String(koreaTime.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(koreaTime.getUTCDate()).padStart(2, '0');
-        const baseDate = `${year}${month}${day}`;
-        
-        // 시간 계산
+        let year = koreaTime.getUTCFullYear();
+        let month = koreaTime.getUTCMonth() + 1;
+        let day = koreaTime.getUTCDate();
         let hour = koreaTime.getUTCHours();
         const minutes = koreaTime.getUTCMinutes();
-        
-        // 초단기실황: 매시 정각 발표, 40분 후부터 사용 가능
-        if (minutes < 40) {
-            hour = hour - 1;
-            if (hour < 0) hour = 23;
-        }
-        const baseTime = String(hour).padStart(2, '0') + '00';
 
-        const endpoint = type === 'ultra' 
-            ? 'getUltraSrtNcst'  // 초단기실황
-            : 'getVilageFcst';   // 단기예보
+        let baseDate, baseTime, endpoint;
+
+        if (type === 'ultra') {
+            // 초단기실황: 매시 정각 발표, 40분 후부터 사용 가능
+            if (minutes < 40) {
+                hour = hour - 1;
+                if (hour < 0) {
+                    hour = 23;
+                    day = day - 1;
+                    if (day < 1) {
+                        month = month - 1;
+                        if (month < 1) { month = 12; year = year - 1; }
+                        day = new Date(year, month, 0).getDate();
+                    }
+                }
+            }
+            baseDate = `${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`;
+            baseTime = String(hour).padStart(2, '0') + '00';
+            endpoint = 'getUltraSrtNcst';
+        } else {
+            // 단기예보: 02, 05, 08, 11, 14, 17, 20, 23시 발표 (발표 후 약 10분)
+            const baseHours = [2, 5, 8, 11, 14, 17, 20, 23];
+            let baseHour = 23;
+            
+            // 현재 시간 기준 가장 최근 발표시간 찾기
+            for (let i = baseHours.length - 1; i >= 0; i--) {
+                if (hour > baseHours[i] || (hour === baseHours[i] && minutes >= 10)) {
+                    baseHour = baseHours[i];
+                    break;
+                }
+                if (i === 0) {
+                    // 오늘 첫 발표 전이면 어제 23시 사용
+                    baseHour = 23;
+                    day = day - 1;
+                    if (day < 1) {
+                        month = month - 1;
+                        if (month < 1) { month = 12; year = year - 1; }
+                        day = new Date(year, month, 0).getDate();
+                    }
+                }
+            }
+            
+            baseDate = `${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`;
+            baseTime = String(baseHour).padStart(2, '0') + '00';
+            endpoint = 'getVilageFcst';
+        }
 
         // 기상청 API허브 URL 형식
-        const apiUrl = `https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0/${endpoint}?pageNo=1&numOfRows=100&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}&authKey=${KMA_API_KEY}`;
+        const numOfRows = type === 'ultra' ? 100 : 1000; // 단기예보는 더 많은 데이터
+        const apiUrl = `https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0/${endpoint}?pageNo=1&numOfRows=${numOfRows}&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}&authKey=${KMA_API_KEY}`;
         
         console.log(`[Weather] Request: ${baseDate} ${baseTime}, nx=${nx}, ny=${ny}`);
 

@@ -1746,33 +1746,321 @@
 
     // ===== 날씨 (Weather) =====
     const Weather = {
-        city: Storage.get('weatherCity', '60,127'), // 서울 기본값
-        cities: {
-            '60,127': '서울', '97,74': '부산', '89,90': '대구',
-            '55,124': '인천', '67,100': '대전', '62,123': '판교', '52,38': '제주'
-        },
+        // 즐겨찾기 (최대 3개)
+        favorites: Storage.get('weatherFavorites', [
+            { name: '서울', nx: 60, ny: 127 }
+        ]),
+        currentIdx: Storage.get('weatherCurrentIdx', 0),
         data: null,
 
+        // 전국 주요 동네 격자 좌표 (약 300개)
+        locations: [
+            // 서울
+            { name: '종로구 종로동', nx: 60, ny: 127 }, { name: '종로구 청운효자동', nx: 60, ny: 127 },
+            { name: '중구 명동', nx: 60, ny: 127 }, { name: '중구 을지로동', nx: 60, ny: 127 },
+            { name: '용산구 이태원동', nx: 60, ny: 126 }, { name: '용산구 한남동', nx: 60, ny: 126 },
+            { name: '성동구 성수동', nx: 61, ny: 127 }, { name: '성동구 왕십리동', nx: 61, ny: 127 },
+            { name: '광진구 건대입구', nx: 62, ny: 126 }, { name: '광진구 자양동', nx: 62, ny: 127 },
+            { name: '동대문구 회기동', nx: 61, ny: 127 }, { name: '동대문구 청량리동', nx: 61, ny: 127 },
+            { name: '중랑구 면목동', nx: 62, ny: 128 }, { name: '중랑구 상봉동', nx: 62, ny: 128 },
+            { name: '성북구 성북동', nx: 61, ny: 128 }, { name: '성북구 정릉동', nx: 61, ny: 128 },
+            { name: '강북구 수유동', nx: 61, ny: 129 }, { name: '강북구 미아동', nx: 61, ny: 129 },
+            { name: '도봉구 창동', nx: 61, ny: 130 }, { name: '도봉구 쌍문동', nx: 61, ny: 130 },
+            { name: '노원구 상계동', nx: 61, ny: 130 }, { name: '노원구 중계동', nx: 61, ny: 130 },
+            { name: '은평구 불광동', nx: 59, ny: 128 }, { name: '은평구 연신내', nx: 59, ny: 128 },
+            { name: '서대문구 신촌동', nx: 59, ny: 127 }, { name: '서대문구 연희동', nx: 59, ny: 127 },
+            { name: '마포구 홍대입구', nx: 59, ny: 127 }, { name: '마포구 합정동', nx: 58, ny: 127 },
+            { name: '양천구 목동', nx: 57, ny: 126 }, { name: '양천구 신정동', nx: 57, ny: 126 },
+            { name: '강서구 화곡동', nx: 57, ny: 126 }, { name: '강서구 발산동', nx: 56, ny: 126 },
+            { name: '구로구 구로동', nx: 57, ny: 125 }, { name: '구로구 신도림동', nx: 58, ny: 125 },
+            { name: '금천구 가산동', nx: 58, ny: 124 }, { name: '금천구 독산동', nx: 58, ny: 124 },
+            { name: '영등포구 여의도동', nx: 58, ny: 126 }, { name: '영등포구 당산동', nx: 58, ny: 126 },
+            { name: '동작구 노량진동', nx: 59, ny: 125 }, { name: '동작구 사당동', nx: 59, ny: 125 },
+            { name: '관악구 신림동', nx: 59, ny: 125 }, { name: '관악구 봉천동', nx: 59, ny: 125 },
+            { name: '서초구 서초동', nx: 61, ny: 125 }, { name: '서초구 반포동', nx: 60, ny: 125 },
+            { name: '강남구 역삼동', nx: 61, ny: 126 }, { name: '강남구 삼성동', nx: 62, ny: 126 },
+            { name: '강남구 논현동', nx: 61, ny: 126 }, { name: '강남구 청담동', nx: 62, ny: 126 },
+            { name: '강남구 대치동', nx: 61, ny: 125 }, { name: '강남구 도곡동', nx: 61, ny: 125 },
+            { name: '송파구 잠실동', nx: 62, ny: 126 }, { name: '송파구 문정동', nx: 62, ny: 125 },
+            { name: '송파구 가락동', nx: 62, ny: 125 }, { name: '송파구 석촌동', nx: 62, ny: 125 },
+            { name: '강동구 천호동', nx: 63, ny: 126 }, { name: '강동구 길동', nx: 63, ny: 126 },
+            // 경기도
+            { name: '성남시 분당구 정자동', nx: 63, ny: 124 }, { name: '성남시 분당구 서현동', nx: 63, ny: 124 },
+            { name: '성남시 판교', nx: 62, ny: 123 }, { name: '성남시 야탑동', nx: 63, ny: 124 },
+            { name: '수원시 영통구', nx: 61, ny: 120 }, { name: '수원시 권선구', nx: 60, ny: 120 },
+            { name: '수원시 팔달구', nx: 60, ny: 121 }, { name: '수원시 장안구', nx: 60, ny: 121 },
+            { name: '용인시 수지구', nx: 62, ny: 121 }, { name: '용인시 기흥구', nx: 62, ny: 120 },
+            { name: '고양시 일산동구', nx: 56, ny: 129 }, { name: '고양시 일산서구', nx: 56, ny: 129 },
+            { name: '고양시 덕양구', nx: 57, ny: 128 }, { name: '파주시 운정', nx: 56, ny: 131 },
+            { name: '부천시 원미구', nx: 56, ny: 125 }, { name: '부천시 소사구', nx: 56, ny: 125 },
+            { name: '안양시 동안구', nx: 59, ny: 123 }, { name: '안양시 만안구', nx: 59, ny: 124 },
+            { name: '안산시 단원구', nx: 57, ny: 121 }, { name: '안산시 상록구', nx: 58, ny: 121 },
+            { name: '광명시', nx: 58, ny: 125 }, { name: '시흥시', nx: 57, ny: 123 },
+            { name: '군포시', nx: 59, ny: 122 }, { name: '의왕시', nx: 60, ny: 122 },
+            { name: '하남시', nx: 64, ny: 126 }, { name: '과천시', nx: 60, ny: 124 },
+            { name: '구리시', nx: 62, ny: 127 }, { name: '남양주시 다산', nx: 64, ny: 128 },
+            { name: '의정부시', nx: 61, ny: 130 }, { name: '양주시', nx: 61, ny: 131 },
+            { name: '김포시', nx: 55, ny: 128 }, { name: '화성시 동탄', nx: 62, ny: 118 },
+            { name: '평택시', nx: 62, ny: 114 }, { name: '오산시', nx: 62, ny: 118 },
+            // 인천
+            { name: '인천 중구', nx: 54, ny: 125 }, { name: '인천 동구', nx: 54, ny: 125 },
+            { name: '인천 미추홀구', nx: 54, ny: 124 }, { name: '인천 연수구', nx: 55, ny: 123 },
+            { name: '인천 남동구', nx: 56, ny: 124 }, { name: '인천 부평구', nx: 55, ny: 125 },
+            { name: '인천 계양구', nx: 56, ny: 126 }, { name: '인천 서구', nx: 55, ny: 126 },
+            { name: '인천 송도', nx: 55, ny: 123 },
+            // 부산
+            { name: '부산 중구', nx: 97, ny: 74 }, { name: '부산 서구', nx: 97, ny: 74 },
+            { name: '부산 동구', nx: 98, ny: 75 }, { name: '부산 영도구', nx: 98, ny: 74 },
+            { name: '부산 부산진구', nx: 97, ny: 75 }, { name: '부산 동래구', nx: 98, ny: 76 },
+            { name: '부산 남구', nx: 98, ny: 75 }, { name: '부산 북구', nx: 96, ny: 76 },
+            { name: '부산 해운대구', nx: 99, ny: 75 }, { name: '부산 사하구', nx: 96, ny: 74 },
+            { name: '부산 금정구', nx: 98, ny: 77 }, { name: '부산 강서구', nx: 96, ny: 76 },
+            { name: '부산 연제구', nx: 98, ny: 76 }, { name: '부산 수영구', nx: 99, ny: 75 },
+            { name: '부산 사상구', nx: 96, ny: 75 }, { name: '부산 기장군', nx: 100, ny: 77 },
+            // 대구
+            { name: '대구 중구', nx: 89, ny: 90 }, { name: '대구 동구', nx: 90, ny: 91 },
+            { name: '대구 서구', nx: 88, ny: 90 }, { name: '대구 남구', nx: 89, ny: 90 },
+            { name: '대구 북구', nx: 89, ny: 91 }, { name: '대구 수성구', nx: 89, ny: 90 },
+            { name: '대구 달서구', nx: 88, ny: 90 }, { name: '대구 달성군', nx: 86, ny: 88 },
+            // 대전
+            { name: '대전 동구', nx: 68, ny: 100 }, { name: '대전 중구', nx: 68, ny: 100 },
+            { name: '대전 서구', nx: 67, ny: 100 }, { name: '대전 유성구', nx: 67, ny: 101 },
+            { name: '대전 대덕구', nx: 68, ny: 101 },
+            // 광주
+            { name: '광주 동구', nx: 60, ny: 74 }, { name: '광주 서구', nx: 59, ny: 74 },
+            { name: '광주 남구', nx: 59, ny: 73 }, { name: '광주 북구', nx: 59, ny: 75 },
+            { name: '광주 광산구', nx: 57, ny: 74 },
+            // 울산
+            { name: '울산 중구', nx: 102, ny: 84 }, { name: '울산 남구', nx: 102, ny: 84 },
+            { name: '울산 동구', nx: 104, ny: 83 }, { name: '울산 북구', nx: 103, ny: 85 },
+            { name: '울산 울주군', nx: 101, ny: 84 },
+            // 세종
+            { name: '세종시', nx: 66, ny: 103 },
+            // 제주
+            { name: '제주시', nx: 53, ny: 38 }, { name: '서귀포시', nx: 52, ny: 33 },
+            // 강원도
+            { name: '춘천시', nx: 73, ny: 134 }, { name: '원주시', nx: 76, ny: 122 },
+            { name: '강릉시', nx: 92, ny: 131 }, { name: '속초시', nx: 87, ny: 141 },
+            { name: '동해시', nx: 97, ny: 127 }, { name: '삼척시', nx: 98, ny: 125 },
+            // 충청북도
+            { name: '청주시 상당구', nx: 69, ny: 107 }, { name: '청주시 흥덕구', nx: 67, ny: 106 },
+            { name: '충주시', nx: 76, ny: 114 }, { name: '제천시', nx: 81, ny: 118 },
+            // 충청남도
+            { name: '천안시 동남구', nx: 63, ny: 110 }, { name: '천안시 서북구', nx: 63, ny: 112 },
+            { name: '공주시', nx: 63, ny: 102 }, { name: '아산시', nx: 60, ny: 110 },
+            { name: '서산시', nx: 51, ny: 110 }, { name: '논산시', nx: 62, ny: 97 },
+            // 전라북도
+            { name: '전주시 완산구', nx: 63, ny: 89 }, { name: '전주시 덕진구', nx: 63, ny: 89 },
+            { name: '익산시', nx: 60, ny: 91 }, { name: '군산시', nx: 56, ny: 92 },
+            // 전라남도
+            { name: '목포시', nx: 50, ny: 67 }, { name: '여수시', nx: 73, ny: 66 },
+            { name: '순천시', nx: 70, ny: 70 }, { name: '광양시', nx: 73, ny: 70 },
+            // 경상북도
+            { name: '포항시 남구', nx: 102, ny: 94 }, { name: '포항시 북구', nx: 102, ny: 95 },
+            { name: '경주시', nx: 100, ny: 91 }, { name: '구미시', nx: 84, ny: 96 },
+            { name: '안동시', nx: 91, ny: 106 }, { name: '김천시', nx: 80, ny: 96 },
+            // 경상남도
+            { name: '창원시 의창구', nx: 90, ny: 77 }, { name: '창원시 성산구', nx: 91, ny: 76 },
+            { name: '창원시 마산', nx: 89, ny: 76 }, { name: '창원시 진해', nx: 91, ny: 75 },
+            { name: '진주시', nx: 81, ny: 75 }, { name: '김해시', nx: 95, ny: 77 },
+            { name: '양산시', nx: 97, ny: 79 }, { name: '거제시', nx: 90, ny: 69 }
+        ],
+
         init() {
+            this.renderFavoriteButtons();
             this.bindEvents();
             this.load();
         },
 
+        get currentLocation() {
+            return this.favorites[this.currentIdx] || this.favorites[0] || { name: '서울', nx: 60, ny: 127 };
+        },
+
         bindEvents() {
-            const select = document.getElementById('weather-city');
-            if (select) {
-                select.value = this.city;
-                select.addEventListener('change', (e) => {
-                    this.city = e.target.value;
-                    Storage.set('weatherCity', this.city);
+            // 설정 버튼
+            document.getElementById('weather-settings-btn')?.addEventListener('click', () => this.openModal());
+            document.getElementById('weather-modal-close')?.addEventListener('click', () => this.closeModal());
+            document.getElementById('weather-modal')?.addEventListener('click', (e) => {
+                if (e.target.id === 'weather-modal') this.closeModal();
+            });
+
+            // 새로고침 버튼
+            document.getElementById('weather-refresh-btn')?.addEventListener('click', () => {
+                const btn = document.getElementById('weather-refresh-btn');
+                btn.querySelector('span').classList.add('animate-spin');
+                this.load().finally(() => {
+                    setTimeout(() => btn.querySelector('span').classList.remove('animate-spin'), 500);
+                });
+            });
+
+            // 동 검색
+            const searchInput = document.getElementById('weather-search-input');
+            let searchTimeout;
+            searchInput?.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => this.searchLocations(e.target.value), 200);
+            });
+        },
+
+        renderFavoriteButtons() {
+            const container = document.getElementById('weather-favorites');
+            if (!container) return;
+
+            container.innerHTML = this.favorites.map((fav, idx) => `
+                <button class="weather-fav-btn px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                    idx === this.currentIdx 
+                        ? 'bg-primary text-white' 
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-primary/20'
+                }" data-idx="${idx}">
+                    ${fav.name.split(' ').pop()}
+                </button>
+            `).join('');
+
+            // 버튼 이벤트
+            container.querySelectorAll('.weather-fav-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    this.currentIdx = parseInt(btn.dataset.idx);
+                    Storage.set('weatherCurrentIdx', this.currentIdx);
+                    this.renderFavoriteButtons();
                     this.load();
                 });
+            });
+        },
+
+        openModal() {
+            document.getElementById('weather-modal')?.classList.remove('hidden');
+            document.getElementById('weather-search-input').value = '';
+            document.getElementById('weather-search-results').classList.add('hidden');
+            this.renderFavoriteList();
+        },
+
+        closeModal() {
+            document.getElementById('weather-modal')?.classList.add('hidden');
+        },
+
+        searchLocations(query) {
+            const resultsEl = document.getElementById('weather-search-results');
+            if (!resultsEl) return;
+
+            if (!query || query.length < 2) {
+                resultsEl.classList.add('hidden');
+                return;
             }
+
+            const q = query.toLowerCase();
+            const matches = this.locations.filter(loc => 
+                loc.name.toLowerCase().includes(q)
+            ).slice(0, 10);
+
+            if (matches.length === 0) {
+                resultsEl.innerHTML = `<div class="text-sm text-slate-400 py-2 text-center">검색 결과가 없습니다</div>`;
+            } else {
+                resultsEl.innerHTML = matches.map(loc => `
+                    <button class="weather-search-item w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-between"
+                        data-name="${loc.name}" data-nx="${loc.nx}" data-ny="${loc.ny}">
+                        <span>📍 ${loc.name}</span>
+                        <span class="text-xs text-slate-400">${loc.nx},${loc.ny}</span>
+                    </button>
+                `).join('');
+
+                resultsEl.querySelectorAll('.weather-search-item').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        this.addFavorite({
+                            name: btn.dataset.name,
+                            nx: parseInt(btn.dataset.nx),
+                            ny: parseInt(btn.dataset.ny)
+                        });
+                    });
+                });
+            }
+
+            resultsEl.classList.remove('hidden');
+        },
+
+        addFavorite(location) {
+            // 이미 있는지 확인
+            const exists = this.favorites.findIndex(f => f.nx === location.nx && f.ny === location.ny);
+            if (exists >= 0) {
+                // 이미 있으면 해당 위치로 전환
+                this.currentIdx = exists;
+                Storage.set('weatherCurrentIdx', this.currentIdx);
+                this.closeModal();
+                this.renderFavoriteButtons();
+                this.load();
+                return;
+            }
+
+            // 최대 3개 제한
+            if (this.favorites.length >= 3) {
+                alert('즐겨찾기는 최대 3곳까지 등록할 수 있습니다.\n기존 항목을 삭제 후 추가해주세요.');
+                return;
+            }
+
+            this.favorites.push(location);
+            this.currentIdx = this.favorites.length - 1;
+            Storage.set('weatherFavorites', this.favorites);
+            Storage.set('weatherCurrentIdx', this.currentIdx);
+
+            this.renderFavoriteList();
+            this.renderFavoriteButtons();
+            this.closeModal();
+            this.load();
+        },
+
+        removeFavorite(idx) {
+            if (this.favorites.length <= 1) {
+                alert('최소 1곳은 등록되어 있어야 합니다.');
+                return;
+            }
+
+            this.favorites.splice(idx, 1);
+            if (this.currentIdx >= this.favorites.length) {
+                this.currentIdx = this.favorites.length - 1;
+            }
+            Storage.set('weatherFavorites', this.favorites);
+            Storage.set('weatherCurrentIdx', this.currentIdx);
+
+            this.renderFavoriteList();
+            this.renderFavoriteButtons();
+            this.load();
+        },
+
+        renderFavoriteList() {
+            const container = document.getElementById('weather-favorite-list');
+            if (!container) return;
+
+            if (this.favorites.length === 0) {
+                container.innerHTML = `<div class="text-sm text-slate-400 text-center py-4">등록된 즐겨찾기가 없습니다</div>`;
+                return;
+            }
+
+            container.innerHTML = this.favorites.map((fav, idx) => `
+                <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-lg ${idx === this.currentIdx ? 'text-primary' : 'text-slate-400'}">
+                            ${idx === this.currentIdx ? 'radio_button_checked' : 'radio_button_unchecked'}
+                        </span>
+                        <span class="text-sm font-medium">${fav.name}</span>
+                        <span class="text-xs text-slate-400">(${fav.nx},${fav.ny})</span>
+                    </div>
+                    <button class="weather-fav-remove p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500" data-idx="${idx}">
+                        <span class="material-symbols-outlined text-lg">delete</span>
+                    </button>
+                </div>
+            `).join('');
+
+            container.querySelectorAll('.weather-fav-remove').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    this.removeFavorite(parseInt(btn.dataset.idx));
+                });
+            });
         },
 
         async load() {
             const container = document.getElementById('weather-content');
             if (!container) return;
+
+            const loc = this.currentLocation;
 
             container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-400 py-8">
                 <span class="material-symbols-outlined text-4xl mb-2 animate-pulse">cloud_sync</span>
@@ -1780,23 +2068,29 @@
             </div>`;
 
             try {
-                const [nx, ny] = this.city.split(',');
-                const res = await fetch(`/api/weather?nx=${nx}&ny=${ny}&type=ultra`);
-                const data = await res.json();
+                // 현재 날씨 (초단기실황) + 단기예보 동시 요청
+                const [currentRes, forecastRes] = await Promise.all([
+                    fetch(`/api/weather?nx=${loc.nx}&ny=${loc.ny}&type=ultra`),
+                    fetch(`/api/weather?nx=${loc.nx}&ny=${loc.ny}&type=short`)
+                ]);
 
-                if (data.error) {
-                    this.showError(data.error.message);
+                const currentData = await currentRes.json();
+                const forecastData = await forecastRes.json();
+
+                if (currentData.error) {
+                    this.showError(currentData.error.message);
                     return;
                 }
 
-                this.data = this.parseWeatherData(data);
+                this.data = this.parseCurrentWeather(currentData);
+                this.forecast = this.parseForecast(forecastData);
                 this.render();
             } catch (error) {
                 this.showError('날씨 정보를 불러올 수 없습니다: ' + error.message);
             }
         },
 
-        parseWeatherData(data) {
+        parseCurrentWeather(data) {
             const items = data.response?.body?.items?.item || [];
             const result = {};
             items.forEach(item => {
@@ -1805,20 +2099,191 @@
             return result;
         },
 
+        parseForecast(data) {
+            const items = data.response?.body?.items?.item || [];
+            if (!items.length) return { hourly: [], daily: [] };
+
+            // 시간별로 그룹핑
+            const byTime = {};
+            items.forEach(item => {
+                const key = `${item.fcstDate}_${item.fcstTime}`;
+                if (!byTime[key]) {
+                    byTime[key] = { date: item.fcstDate, time: item.fcstTime };
+                }
+                byTime[key][item.category] = item.fcstValue;
+            });
+
+            const forecasts = Object.values(byTime).sort((a, b) => 
+                `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)
+            );
+
+            // 오늘 시간대별 (최대 8개)
+            const now = new Date();
+            const currentHour = now.getHours();
+            const today = now.toISOString().slice(0, 10).replace(/-/g, '');
+            
+            const hourly = forecasts
+                .filter(f => {
+                    const fHour = parseInt(f.time.slice(0, 2));
+                    return f.date === today && fHour >= currentHour;
+                })
+                .slice(0, 8);
+
+            // 일별 (최저/최고 기온)
+            const byDate = {};
+            forecasts.forEach(f => {
+                if (!byDate[f.date]) {
+                    byDate[f.date] = { date: f.date, temps: [], sky: [], pop: [] };
+                }
+                if (f.TMP) byDate[f.date].temps.push(parseFloat(f.TMP));
+                if (f.TMN) byDate[f.date].min = parseFloat(f.TMN);
+                if (f.TMX) byDate[f.date].max = parseFloat(f.TMX);
+                if (f.SKY) byDate[f.date].sky.push(f.SKY);
+                if (f.POP) byDate[f.date].pop.push(parseInt(f.POP));
+            });
+
+            const daily = Object.values(byDate)
+                .map(d => ({
+                    date: d.date,
+                    min: d.min ?? (d.temps.length ? Math.min(...d.temps) : null),
+                    max: d.max ?? (d.temps.length ? Math.max(...d.temps) : null),
+                    sky: d.sky.length ? d.sky[Math.floor(d.sky.length / 2)] : '1',
+                    pop: d.pop.length ? Math.max(...d.pop) : 0
+                }))
+                .filter(d => d.min !== null && d.max !== null)
+                .slice(0, 5);
+
+            return { hourly, daily };
+        },
+
+        // 체감온도 계산 (Wind Chill / Heat Index)
+        calcFeelsLike(temp, wind, humidity) {
+            const t = parseFloat(temp);
+            const w = parseFloat(wind) * 3.6; // m/s → km/h
+            const h = parseFloat(humidity);
+
+            if (isNaN(t)) return null;
+
+            // 추운 날씨: Wind Chill (10°C 이하, 풍속 4.8km/h 이상)
+            if (t <= 10 && w >= 4.8) {
+                const wc = 13.12 + 0.6215 * t - 11.37 * Math.pow(w, 0.16) + 0.3965 * t * Math.pow(w, 0.16);
+                return Math.round(wc * 10) / 10;
+            }
+            
+            // 더운 날씨: Heat Index (27°C 이상)
+            if (t >= 27 && !isNaN(h)) {
+                const hi = -8.78469475556 + 1.61139411 * t + 2.33854883889 * h
+                    - 0.14611605 * t * h - 0.012308094 * t * t
+                    - 0.0164248277778 * h * h + 0.002211732 * t * t * h
+                    + 0.00072546 * t * h * h - 0.000003582 * t * t * h * h;
+                return Math.round(hi * 10) / 10;
+            }
+
+            return null;
+        },
+
+        getWeatherIcon(pty, sky) {
+            // PTY(강수형태): 0없음, 1비, 2비/눈, 3눈, 4소나기
+            // SKY(하늘상태): 1맑음, 3구름많음, 4흐림
+            if (pty && pty !== '0') {
+                const ptyIcons = { '1': 'rainy', '2': 'weather_mix', '3': 'weather_snowy', '4': 'rainy' };
+                return ptyIcons[pty] || 'cloud';
+            }
+            const skyIcons = { '1': 'sunny', '3': 'partly_cloudy_day', '4': 'cloud' };
+            return skyIcons[sky] || 'sunny';
+        },
+
+        getWeatherName(pty, sky) {
+            if (pty && pty !== '0') {
+                const ptyNames = { '1': '비', '2': '비/눈', '3': '눈', '4': '소나기' };
+                return ptyNames[pty] || '흐림';
+            }
+            const skyNames = { '1': '맑음', '3': '구름많음', '4': '흐림' };
+            return skyNames[sky] || '맑음';
+        },
+
+        getDayName(dateStr) {
+            const date = new Date(
+                parseInt(dateStr.slice(0, 4)),
+                parseInt(dateStr.slice(4, 6)) - 1,
+                parseInt(dateStr.slice(6, 8))
+            );
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const diff = Math.floor((date - today) / (1000 * 60 * 60 * 24));
+            
+            if (diff === 0) return '오늘';
+            if (diff === 1) return '내일';
+            if (diff === 2) return '모레';
+            
+            const days = ['일', '월', '화', '수', '목', '금', '토'];
+            return days[date.getDay()] + '요일';
+        },
+
         render() {
             const container = document.getElementById('weather-content');
             if (!container || !this.data) return;
 
+            const loc = this.currentLocation;
             const temp = this.data.T1H || this.data.TMP || '-';
             const humidity = this.data.REH || '-';
-            const sky = this.data.PTY || '0'; // 강수형태
+            const pty = this.data.PTY || '0';
             const wind = this.data.WSD || '-';
 
-            // 날씨 아이콘 결정
-            const weatherIcons = { '0': 'sunny', '1': 'rainy', '2': 'weather_mix', '3': 'weather_snowy', '4': 'rainy' };
-            const weatherNames = { '0': '맑음', '1': '비', '2': '비/눈', '3': '눈', '4': '소나기' };
-            const icon = weatherIcons[sky] || 'cloud';
-            const condition = weatherNames[sky] || '흐림';
+            const icon = this.getWeatherIcon(pty, '1');
+            const condition = this.getWeatherName(pty, '1');
+            const feelsLike = this.calcFeelsLike(temp, wind, humidity);
+
+            // 시간대별 예보 HTML
+            let hourlyHtml = '';
+            if (this.forecast?.hourly?.length) {
+                hourlyHtml = `
+                    <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                        <p class="text-xs font-medium text-slate-500 mb-3">⏰ 오늘 시간대별</p>
+                        <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                            ${this.forecast.hourly.map(h => {
+                                const hour = h.time.slice(0, 2);
+                                const hIcon = this.getWeatherIcon(h.PTY, h.SKY);
+                                return `
+                                    <div class="flex-shrink-0 flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 min-w-[52px]">
+                                        <span class="text-[10px] text-slate-500">${hour}시</span>
+                                        <span class="material-symbols-outlined text-lg text-primary">${hIcon}</span>
+                                        <span class="text-xs font-bold">${h.TMP || '-'}°</span>
+                                        ${h.POP && h.POP !== '0' ? `<span class="text-[10px] text-blue-500">💧${h.POP}%</span>` : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 주간 예보 HTML
+            let dailyHtml = '';
+            if (this.forecast?.daily?.length > 1) {
+                dailyHtml = `
+                    <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                        <p class="text-xs font-medium text-slate-500 mb-3">📅 주간 예보</p>
+                        <div class="space-y-2">
+                            ${this.forecast.daily.map(d => {
+                                const dIcon = this.getWeatherIcon(null, d.sky);
+                                return `
+                                    <div class="flex items-center justify-between py-1">
+                                        <span class="text-sm font-medium w-14">${this.getDayName(d.date)}</span>
+                                        <span class="material-symbols-outlined text-lg text-primary">${dIcon}</span>
+                                        ${d.pop > 0 ? `<span class="text-xs text-blue-500 w-10">💧${d.pop}%</span>` : '<span class="w-10"></span>'}
+                                        <div class="flex items-center gap-2 text-sm">
+                                            <span class="text-blue-500">${Math.round(d.min)}°</span>
+                                            <div class="w-16 h-1.5 rounded-full bg-gradient-to-r from-blue-400 to-red-400 opacity-50"></div>
+                                            <span class="text-red-500">${Math.round(d.max)}°</span>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
 
             container.innerHTML = `
                 <div class="flex items-center justify-between">
@@ -1830,6 +2295,12 @@
                         </div>
                     </div>
                     <div class="text-right space-y-1">
+                        ${feelsLike !== null ? `
+                            <div class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                                <span class="material-symbols-outlined text-lg">thermostat</span>
+                                <span>체감 ${feelsLike}°</span>
+                            </div>
+                        ` : ''}
                         <div class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                             <span class="material-symbols-outlined text-lg">water_drop</span>
                             <span>습도 ${humidity}%</span>
@@ -1840,9 +2311,12 @@
                         </div>
                     </div>
                 </div>
-                <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400 text-center">
-                    ${this.cities[this.city]} · ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 기준
-                </div>`;
+                <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400 text-center">
+                    ${loc.name} · ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 기준
+                </div>
+                ${hourlyHtml}
+                ${dailyHtml}
+            `;
         },
 
         showError(message) {
