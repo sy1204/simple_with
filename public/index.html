@@ -190,6 +190,53 @@
         .anti-blue .hover\:bg-slate-100:hover {
             background-color: #ece2d0 !important;
         }
+
+        /* 위젯 편집 모드 스타일 */
+        .card.edit-mode-active {
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .card.edit-mode-active:hover {
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+            transform: scale(1.02);
+        }
+
+        .card.dragging {
+            opacity: 0.5;
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+        }
+
+        .edit-mode .card {
+            position: relative;
+        }
+
+        .edit-mode .card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border: 2px dashed rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .edit-mode .card:hover::before {
+            opacity: 1;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-2px); }
+            75% { transform: translateX(2px); }
+        }
+
+        .edit-mode .card.edit-mode-active {
+            animation: shake 0.5s ease-in-out;
+        }
     </style>
 </head>
 
@@ -230,6 +277,11 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
+                            <button id="edit-mode-toggle"
+                                class="flex items-center justify-center size-9 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-colors"
+                                title="위젯 편집">
+                                <span class="material-symbols-outlined text-xl">edit</span>
+                            </button>
                             <button id="theme-toggle"
                                 class="flex items-center justify-center size-9 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-colors">
                                 <span class="material-symbols-outlined text-xl">dark_mode</span>

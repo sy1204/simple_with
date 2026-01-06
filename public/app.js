@@ -3226,6 +3226,293 @@
         }
     };
 
+    // ===== 위젯 레이아웃 관리자 =====
+    const WidgetLayout = {
+        editMode: false,
+        draggedElement: null,
+        longPressTimer: null,
+        touchStartX: 0,
+        touchStartY: 0,
+        LONG_PRESS_DURATION: 500,
+
+        init() {
+            this.setupEditModeToggle();
+            this.loadLayout();
+            this.attachWidgetEvents();
+        },
+
+        setupEditModeToggle() {
+            const btn = document.getElementById('edit-mode-toggle');
+            if (btn) {
+                btn.addEventListener('click', () => this.toggleEditMode());
+            }
+        },
+
+        toggleEditMode() {
+            this.editMode = !this.editMode;
+            const btn = document.getElementById('edit-mode-toggle');
+            const container = document.getElementById('main-content');
+
+            if (this.editMode) {
+                btn.classList.add('bg-primary', 'text-white');
+                btn.classList.remove('text-slate-600', 'dark:text-slate-400');
+                container.classList.add('edit-mode');
+                this.showEditUI();
+            } else {
+                btn.classList.remove('bg-primary', 'text-white');
+                btn.classList.add('text-slate-600', 'dark:text-slate-400');
+                container.classList.remove('edit-mode');
+                this.hideEditUI();
+                this.saveLayout();
+            }
+        },
+
+        showEditUI() {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach(card => {
+                card.style.cursor = 'move';
+                card.classList.add('edit-mode-active');
+                this.addResizeHandles(card);
+            });
+        },
+
+        hideEditUI() {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach(card => {
+                card.style.cursor = '';
+                card.classList.remove('edit-mode-active');
+                this.removeResizeHandles(card);
+            });
+        },
+
+        addResizeHandles(card) {
+            if (card.querySelector('.resize-handle')) return;
+
+            const handle = document.createElement('div');
+            handle.className = 'resize-handle';
+            handle.innerHTML = '<span class="material-symbols-outlined text-sm">open_in_full</span>';
+            handle.style.cssText = 'position: absolute; bottom: 4px; right: 4px; width: 24px; height: 24px; background: rgba(59, 130, 246, 0.9); border-radius: 4px; cursor: nwse-resize; display: flex; align-items: center; justify-content: center; color: white; z-index: 100;';
+
+            let startX, startY, startSpan, startRowSpan;
+
+            const onMouseMove = (e) => {
+                e.preventDefault();
+                const deltaX = e.clientX - startX;
+                const deltaY = e.clientY - startY;
+
+                // 대략적인 크기 변경 (100px 당 1 span)
+                const newColSpan = Math.max(1, Math.min(4, startSpan + Math.floor(deltaX / 200)));
+                const newRowSpan = Math.max(1, Math.min(3, startRowSpan + Math.floor(deltaY / 150)));
+
+                this.updateWidgetSize(card, newColSpan, newRowSpan);
+            };
+
+            const onMouseUp = () => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+                this.saveLayout();
+            };
+
+            handle.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                startX = e.clientX;
+                startY = e.clientY;
+                startSpan = this.getWidgetColSpan(card);
+                startRowSpan = this.getWidgetRowSpan(card);
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+
+            card.appendChild(handle);
+        },
+
+        removeResizeHandles(card) {
+            const handle = card.querySelector('.resize-handle');
+            if (handle) handle.remove();
+        },
+
+        getWidgetColSpan(card) {
+            const classes = card.className.match(/(?:lg:)?col-span-(\d+)/);
+            return classes ? parseInt(classes[1]) : 1;
+        },
+
+        getWidgetRowSpan(card) {
+            const classes = card.className.match(/row-span-(\d+)/);
+            return classes ? parseInt(classes[1]) : 1;
+        },
+
+        updateWidgetSize(card, colSpan, rowSpan) {
+            // col-span 업데이트
+            card.className = card.className.replace(/col-span-\d+/g, `col-span-1`);
+            card.className = card.className.replace(/lg:col-span-\d+/g, `lg:col-span-${colSpan}`);
+
+            // row-span 업데이트
+            if (rowSpan > 1) {
+                card.className = card.className.replace(/row-span-\d+/g, `row-span-${rowSpan}`);
+                if (!card.className.includes('row-span-')) {
+                    card.className += ` row-span-${rowSpan}`;
+                }
+            } else {
+                card.className = card.className.replace(/row-span-\d+\s*/g, '');
+            }
+        },
+
+        attachWidgetEvents() {
+            const container = document.querySelector('.grid');
+            if (!container) return;
+
+            container.addEventListener('mousedown', (e) => this.handleDragStart(e));
+            container.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
+
+            document.addEventListener('mousemove', (e) => this.handleDragMove(e));
+            document.addEventListener('mouseup', (e) => this.handleDragEnd(e));
+
+            document.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
+            document.addEventListener('touchend', (e) => this.handleTouchEnd(e));
+        },
+
+        handleDragStart(e) {
+            if (!this.editMode) return;
+
+            const card = e.target.closest('.card');
+            if (!card || e.target.closest('.resize-handle')) return;
+
+            this.draggedElement = card;
+            card.classList.add('dragging');
+            card.style.opacity = '0.5';
+        },
+
+        handleTouchStart(e) {
+            if (!this.editMode) return;
+
+            const card = e.target.closest('.card');
+            if (!card || e.target.closest('.resize-handle')) return;
+
+            const touch = e.touches[0];
+            this.touchStartX = touch.clientX;
+            this.touchStartY = touch.clientY;
+
+            // 길게 누르기 감지
+            this.longPressTimer = setTimeout(() => {
+                this.draggedElement = card;
+                card.classList.add('dragging');
+                card.style.opacity = '0.5';
+
+                // 햅틱 피드백 (지원하는 경우)
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
+            }, this.LONG_PRESS_DURATION);
+        },
+
+        handleDragMove(e) {
+            if (!this.draggedElement || !this.editMode) return;
+            e.preventDefault();
+
+            const afterElement = this.getDragAfterElement(e.clientY);
+            const container = document.querySelector('.grid');
+
+            if (afterElement == null) {
+                container.appendChild(this.draggedElement);
+            } else {
+                container.insertBefore(this.draggedElement, afterElement);
+            }
+        },
+
+        handleTouchMove(e) {
+            if (!this.draggedElement) return;
+
+            const touch = e.touches[0];
+            const deltaX = Math.abs(touch.clientX - this.touchStartX);
+            const deltaY = Math.abs(touch.clientY - this.touchStartY);
+
+            // 움직임이 있으면 longPress 취소
+            if ((deltaX > 10 || deltaY > 10) && this.longPressTimer) {
+                clearTimeout(this.longPressTimer);
+                this.longPressTimer = null;
+            }
+
+            if (this.draggedElement && this.editMode) {
+                e.preventDefault();
+                this.handleDragMove(e);
+            }
+        },
+
+        handleDragEnd(e) {
+            if (!this.draggedElement) return;
+
+            this.draggedElement.classList.remove('dragging');
+            this.draggedElement.style.opacity = '';
+            this.draggedElement = null;
+
+            this.saveLayout();
+        },
+
+        handleTouchEnd(e) {
+            if (this.longPressTimer) {
+                clearTimeout(this.longPressTimer);
+                this.longPressTimer = null;
+            }
+
+            this.handleDragEnd(e);
+        },
+
+        getDragAfterElement(y) {
+            const container = document.querySelector('.grid');
+            const draggableElements = [...container.querySelectorAll('.card:not(.dragging)')];
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        },
+
+        saveLayout() {
+            const cards = document.querySelectorAll('.card');
+            const layout = [];
+
+            cards.forEach(card => {
+                layout.push({
+                    id: card.id,
+                    colSpan: this.getWidgetColSpan(card),
+                    rowSpan: this.getWidgetRowSpan(card),
+                    order: Array.from(cards).indexOf(card)
+                });
+            });
+
+            localStorage.setItem('widgetLayout', JSON.stringify(layout));
+        },
+
+        loadLayout() {
+            const saved = localStorage.getItem('widgetLayout');
+            if (!saved) return;
+
+            try {
+                const layout = JSON.parse(saved);
+                const container = document.querySelector('.grid');
+                if (!container) return;
+
+                // 순서대로 재배치
+                layout.sort((a, b) => a.order - b.order).forEach(item => {
+                    const card = document.getElementById(item.id);
+                    if (card) {
+                        this.updateWidgetSize(card, item.colSpan, item.rowSpan);
+                        container.appendChild(card);
+                    }
+                });
+            } catch (e) {
+                console.error('Failed to load widget layout:', e);
+            }
+        }
+    };
+
     // ===== 초기화 =====
     document.addEventListener('DOMContentLoaded', () => {
         Theme.init();
@@ -3239,5 +3526,6 @@
         Dictionary.init();
         Weather.init();
         Navigation.init();
+        WidgetLayout.init();
     });
 })();
