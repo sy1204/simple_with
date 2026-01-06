@@ -325,6 +325,10 @@
             min-height: 100%;
         }
 
+        .card.row-span-4 {
+            min-height: 100%;
+        }
+
         /* 데스크톱 레이아웃을 위한 위젯 순서 */
         @media (min-width: 1024px) {
             #time-widget {
@@ -477,7 +481,7 @@
 
                     <!-- 시간 위젯 (Time Widget) -->
                     <div id="time-widget"
-                        class="card group relative col-span-1 lg:col-span-2 row-span-1 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 overflow-hidden flex flex-col">
+                        class="card group relative col-span-1 lg:col-span-2 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 overflow-hidden flex flex-col">
                         <div class="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
                             <span class="material-symbols-outlined text-[120px]">schedule</span>
                         </div>
@@ -504,7 +508,7 @@
 
                     <!-- Calendar Card -->
                     <div id="calendar"
-                        class="card group relative col-span-1 lg:col-span-2 row-span-1 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
+                        class="card group relative col-span-1 lg:col-span-2 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
                         <div class="flex justify-between items-center mb-3">
                             <h3 class="text-lg font-bold flex items-center gap-2">
                                 <span class="material-symbols-outlined text-primary">calendar_month</span>
@@ -564,7 +568,7 @@
 
                     <!-- Weather Card -->
                     <div id="weather"
-                        class="card group relative col-span-1 lg:col-span-2 row-span-3 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
+                        class="card group relative col-span-1 lg:col-span-2 row-span-4 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-lg font-bold flex items-center gap-2">
                                 <span class="material-symbols-outlined text-primary">cloud</span>날씨
@@ -692,7 +696,7 @@
 
                     <!-- Memo Card -->
                     <div id="memo"
-                        class="card group relative col-span-1 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
+                        class="card group relative col-span-1 row-span-3 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
                         <div class="flex justify-between items-center mb-2">
                             <span
                                 class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
@@ -706,7 +710,7 @@
 
                     <!-- Todo Card -->
                     <div id="todo"
-                        class="card group relative col-span-1 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
+                        class="card group relative col-span-1 row-span-3 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
                         <h3 class="text-sm font-semibold text-slate-500 mb-3 flex items-center gap-2">
                             <span class="material-symbols-outlined text-lg">checklist</span>체크리스트
                         </h3>
@@ -725,7 +729,7 @@
 
                     <!-- Calculator Card -->
                     <div id="calculator"
-                        class="card group relative col-span-1 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
+                        class="card group relative col-span-1 row-span-3 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
                         <h3 class="text-lg font-bold flex items-center gap-2 mb-4">
                             <span class="material-symbols-outlined text-primary">calculate</span>계산기
                         </h3>
@@ -769,7 +773,7 @@
 
                     <!-- Unit Converter Card -->
                     <div id="converter"
-                        class="card group relative col-span-1 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col gap-4">
+                        class="card group relative col-span-1 row-span-3 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col gap-4">
                         <h3 class="text-sm font-semibold text-slate-500 flex items-center gap-2">
                             <span class="material-symbols-outlined text-lg">currency_exchange</span>단위 변환
                         </h3>
@@ -791,7 +795,7 @@
 
                     <!-- Finance Card -->
                     <div id="finance"
-                        class="card group relative col-span-1 lg:col-span-2 row-span-1 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col gap-4">
+                        class="card group relative col-span-1 lg:col-span-2 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col gap-4">
                         <div class="flex items-center justify-between">
                             <h3 class="text-lg font-bold flex items-center gap-2">
                                 <span class="material-symbols-outlined text-primary">savings</span>금융 계산기
