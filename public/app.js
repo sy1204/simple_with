@@ -2410,6 +2410,9 @@
                 this.data = this.parseCurrentWeather(currentData);
                 this.forecast = forecastData.error ? { hourly: [], daily: [] } : this.parseForecast(forecastData);
                 
+                // 현재 데이터를 과거 기록에 저장
+                this.saveToHistory(this.data, loc.name);
+                
                 // 중기예보 파싱
                 if (midData.error) {
                     console.error('[Weather] Mid forecast error:', midData.error.message);
@@ -2510,6 +2513,52 @@
             if (v <= 7) return { text: '높음', class: 'text-orange-500' };
             if (v <= 10) return { text: '매우높음', class: 'text-red-500' };
             return { text: '위험', class: 'text-purple-600' };
+        },
+
+        // 과거 데이터를 sessionStorage에 저장 (24시간 유지)
+        saveToHistory(data, location) {
+            const now = new Date();
+            const key = 'weatherHistory_' + location.replace(/\s/g, '_');
+            const history = JSON.parse(sessionStorage.getItem(key) || '[]');
+            
+            // 현재 시간 (시 단위로 반올림)
+            const hour = now.getHours();
+            const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+            const timeKey = `${dateStr}${String(hour).padStart(2, '0')}`;
+            
+            // 이미 같은 시간 데이터가 있으면 업데이트
+            const existingIdx = history.findIndex(h => h.timeKey === timeKey);
+            const record = {
+                timeKey,
+                date: dateStr,
+                hour,
+                temp: data.T1H || data.TMP,
+                humidity: data.REH,
+                pty: data.PTY,
+                timestamp: now.getTime()
+            };
+            
+            if (existingIdx >= 0) {
+                history[existingIdx] = record;
+            } else {
+                history.push(record);
+            }
+            
+            // 24시간 이전 데이터 삭제
+            const cutoff = now.getTime() - 24 * 60 * 60 * 1000;
+            const filtered = history.filter(h => h.timestamp > cutoff);
+            
+            // 시간순 정렬
+            filtered.sort((a, b) => a.timeKey.localeCompare(b.timeKey));
+            
+            sessionStorage.setItem(key, JSON.stringify(filtered));
+            console.log('[Weather] History saved:', filtered.length, 'records');
+        },
+
+        // 과거 데이터 가져오기
+        getHistory(location) {
+            const key = 'weatherHistory_' + location.replace(/\s/g, '_');
+            return JSON.parse(sessionStorage.getItem(key) || '[]');
         },
 
         // 미세먼지 데이터 파싱
@@ -2879,31 +2928,56 @@
                 livingIndex: this.livingIndex 
             });
 
-            // 시간대별 예보 HTML (48시간)
+            // 시간대별 예보 HTML (과거 + 미래)
             let hourlyHtml = '';
-            if (this.forecast?.hourly?.length) {
-                // 날짜별로 구분하여 표시
+            const history = this.getHistory(loc.name);
+            const hasHistory = history.length > 0;
+            const hasForecast = this.forecast?.hourly?.length > 0;
+            
+            if (hasHistory || hasForecast) {
                 let lastDate = '';
+                
+                // 과거 데이터 HTML
+                const historyHtml = history.map(h => {
+                    const showDate = h.date !== lastDate;
+                    lastDate = h.date;
+                    const dateLabel = showDate ? this.getDayName(h.date).slice(0, 2) : '';
+                    const hIcon = this.getWeatherIcon(h.pty || '0', '1');
+                    return `
+                        <div class="flex-shrink-0 flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-900/20 min-w-[44px] opacity-70 ${showDate ? 'border-l-2 border-amber-400/50' : ''}">
+                            ${showDate ? `<span class="text-[9px] text-amber-600 font-bold">${dateLabel}</span>` : ''}
+                            <span class="text-[10px] text-amber-600">${h.hour}시</span>
+                            <span class="material-symbols-outlined text-base text-amber-500">${hIcon}</span>
+                            <span class="text-xs font-bold text-amber-700 dark:text-amber-400">${h.temp || '-'}°</span>
+                        </div>
+                    `;
+                }).join('');
+                
+                // 미래 예보 HTML
+                const forecastHtml = (this.forecast?.hourly || []).map(h => {
+                    const hour = h.time.slice(0, 2);
+                    const hIcon = this.getWeatherIcon(h.PTY, h.SKY);
+                    const showDate = h.date !== lastDate;
+                    lastDate = h.date;
+                    const dateLabel = showDate ? this.getDayName(h.date).slice(0, 2) : '';
+                    return `
+                        <div class="flex-shrink-0 flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800/50 min-w-[44px] ${showDate ? 'border-l-2 border-primary/30' : ''}">
+                            ${showDate ? `<span class="text-[9px] text-primary font-bold">${dateLabel}</span>` : ''}
+                            <span class="text-[10px] text-slate-500">${hour}시</span>
+                            <span class="material-symbols-outlined text-base text-primary">${hIcon}</span>
+                            <span class="text-xs font-bold">${h.TMP || '-'}°</span>
+                            ${h.POP && h.POP !== '0' ? `<span class="text-[9px] text-blue-500">💧${h.POP}%</span>` : ''}
+                        </div>
+                    `;
+                }).join('');
+                
                 hourlyHtml = `
                     <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                        <p class="text-xs font-medium text-slate-500 mb-3">⏰ 48시간 예보</p>
+                        <p class="text-xs font-medium text-slate-500 mb-3">⏰ 시간대별 ${hasHistory ? '<span class="text-amber-500">(과거)</span> + ' : ''}예보</p>
                         <div class="flex gap-1.5 overflow-x-auto pb-2 scrollbar-thin">
-                            ${this.forecast.hourly.map(h => {
-                                const hour = h.time.slice(0, 2);
-                                const hIcon = this.getWeatherIcon(h.PTY, h.SKY);
-                                const showDate = h.date !== lastDate;
-                                lastDate = h.date;
-                                const dateLabel = showDate ? this.getDayName(h.date).slice(0, 2) : '';
-                                return `
-                                    <div class="flex-shrink-0 flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800/50 min-w-[44px] ${showDate ? 'border-l-2 border-primary/30' : ''}">
-                                        ${showDate ? `<span class="text-[9px] text-primary font-bold">${dateLabel}</span>` : ''}
-                                        <span class="text-[10px] text-slate-500">${hour}시</span>
-                                        <span class="material-symbols-outlined text-base text-primary">${hIcon}</span>
-                                        <span class="text-xs font-bold">${h.TMP || '-'}°</span>
-                                        ${h.POP && h.POP !== '0' ? `<span class="text-[9px] text-blue-500">💧${h.POP}%</span>` : ''}
-                                    </div>
-                                `;
-                            }).join('')}
+                            ${historyHtml}
+                            ${hasHistory && hasForecast ? '<div class="flex-shrink-0 w-0.5 bg-primary/50 mx-1 self-stretch rounded"></div>' : ''}
+                            ${forecastHtml}
                         </div>
                     </div>
                 `;
