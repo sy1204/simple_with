@@ -2642,6 +2642,108 @@
         }
     };
 
+    // ===== 모바일 네비게이션 =====
+    const MobileNav = {
+        widgets: ['calendar', 'todo', 'time-widget', 'calculator', 'finance', 'converter', 'memo', 'dictionary', 'weather'],
+        currentIndex: 0,
+        touchStartX: 0,
+        touchEndX: 0,
+
+        init() {
+            // 네비게이션 링크 클릭 시 스크롤 오프셋 조정
+            document.querySelectorAll('nav a[href^="#"]').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetId = link.getAttribute('href').slice(1);
+                    const targetEl = document.getElementById(targetId);
+                    if (targetEl) {
+                        const header = document.querySelector('header');
+                        const headerHeight = header ? header.offsetHeight : 100;
+                        const targetPosition = targetEl.offsetTop - headerHeight - 16;
+                        
+                        const mainContent = document.getElementById('main-content');
+                        if (mainContent) {
+                            mainContent.scrollTo({ top: targetPosition, behavior: 'smooth' });
+                        } else {
+                            window.scrollTo({ top: targetPosition, behavior: 'smooth' });
+                        }
+                        
+                        // 현재 인덱스 업데이트
+                        this.currentIndex = this.widgets.indexOf(targetId);
+                    }
+                });
+            });
+
+            // 모바일 터치 스와이프 감지
+            if ('ontouchstart' in window) {
+                const mainContent = document.getElementById('main-content');
+                if (mainContent) {
+                    mainContent.addEventListener('touchstart', (e) => {
+                        this.touchStartX = e.changedTouches[0].screenX;
+                    }, { passive: true });
+
+                    mainContent.addEventListener('touchend', (e) => {
+                        this.touchEndX = e.changedTouches[0].screenX;
+                        this.handleSwipe();
+                    }, { passive: true });
+                }
+            }
+        },
+
+        handleSwipe() {
+            const swipeThreshold = 80; // 최소 스와이프 거리
+            const diff = this.touchStartX - this.touchEndX;
+
+            if (Math.abs(diff) < swipeThreshold) return;
+
+            if (diff > 0) {
+                // 왼쪽으로 스와이프 → 다음 위젯
+                this.navigateTo(this.currentIndex + 1);
+            } else {
+                // 오른쪽으로 스와이프 → 이전 위젯
+                this.navigateTo(this.currentIndex - 1);
+            }
+        },
+
+        navigateTo(index) {
+            // 인덱스 범위 체크
+            if (index < 0) index = 0;
+            if (index >= this.widgets.length) index = this.widgets.length - 1;
+            if (index === this.currentIndex) return;
+
+            this.currentIndex = index;
+            const targetId = this.widgets[index];
+            const targetEl = document.getElementById(targetId);
+
+            if (targetEl) {
+                const header = document.querySelector('header');
+                const headerHeight = header ? header.offsetHeight : 100;
+                const targetPosition = targetEl.offsetTop - headerHeight - 16;
+
+                const mainContent = document.getElementById('main-content');
+                if (mainContent) {
+                    mainContent.scrollTo({ top: targetPosition, behavior: 'smooth' });
+                }
+
+                // 네비게이션 활성 표시 업데이트 (선택)
+                this.updateNavActive(targetId);
+            }
+        },
+
+        updateNavActive(targetId) {
+            document.querySelectorAll('nav a').forEach(link => {
+                const href = link.getAttribute('href');
+                if (href === `#${targetId}`) {
+                    link.classList.add('text-primary', 'font-semibold');
+                    link.classList.remove('text-slate-600', 'dark:text-slate-400');
+                } else if (href !== '#') {
+                    link.classList.remove('text-primary', 'font-semibold');
+                    link.classList.add('text-slate-600', 'dark:text-slate-400');
+                }
+            });
+        }
+    };
+
     // ===== 초기화 =====
     document.addEventListener('DOMContentLoaded', () => {
         Theme.init();
@@ -2654,5 +2756,6 @@
         Memo.init();
         Dictionary.init();
         Weather.init();
+        MobileNav.init();
     });
 })();

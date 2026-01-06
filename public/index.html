@@ -56,6 +56,34 @@
             background: #334155;
         }
 
+        /* 모바일 가로 스크롤바 숨기기 */
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* 모바일 달력 최적화 */
+        @media (max-width: 640px) {
+            #calendar-container .grid {
+                font-size: 11px;
+            }
+            #calendar-container .cal-day {
+                min-height: 32px !important;
+                padding: 2px !important;
+            }
+            #calendar {
+                padding: 12px !important;
+            }
+        }
+
+        /* 부드러운 스크롤 */
+        html {
+            scroll-behavior: smooth;
+        }
+
         /* Anti-Blue (눈 보호) 테마 - 웜 톤 */
         .anti-blue {
             background-color: #f5ede0 !important;
@@ -171,8 +199,8 @@
                         </div>
                     </div>
                 </div>
-                <nav class="border-t border-slate-100 dark:border-slate-800 px-6 lg:px-10 py-2 overflow-x-auto">
-                    <ul class="flex items-center gap-4 md:gap-6 flex-wrap md:flex-nowrap">
+                <nav class="border-t border-slate-100 dark:border-slate-800 px-4 lg:px-10 py-2 overflow-x-auto scrollbar-hide">
+                    <ul class="flex items-center gap-3 md:gap-6 flex-nowrap min-w-max">
                         <li><a class="flex items-center gap-1.5 text-xs font-semibold text-primary px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20"
                                 href="#"><span class="material-symbols-outlined text-[16px]">grid_view</span>전체보기</a>
                         </li>
@@ -221,7 +249,7 @@
             </header>
 
             <!-- Main Content -->
-            <div class="flex-1 overflow-y-auto p-4 lg:p-8 pt-32 lg:pt-36 bg-background-light dark:bg-background-dark">
+            <div id="main-content" class="flex-1 overflow-y-auto p-4 lg:p-8 pt-28 md:pt-32 lg:pt-36 bg-background-light dark:bg-background-dark scroll-pt-28 md:scroll-pt-32 lg:scroll-pt-36">
                 <div class="max-w-[1600px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 pb-10">
 
                     <!-- Calendar Card -->
