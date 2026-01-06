@@ -2958,8 +2958,8 @@
                 const sunset = this.sunRiseSet.sunset.slice(0, 2) + ':' + this.sunRiseSet.sunset.slice(2, 4);
                 sunHtml = `
                     <div class="mt-2 flex justify-center gap-4 text-xs text-slate-500">
-                        <span>🌅 일출 ${sunrise}</span>
-                        <span>🌇 일몰 ${sunset}</span>
+                        <span>일출 ${sunrise}</span>
+                        <span>일몰 ${sunset}</span>
                     </div>
                 `;
             }
