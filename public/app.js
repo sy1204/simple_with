@@ -3582,11 +3582,11 @@
                 });
             });
 
-            localStorage.setItem('widgetLayout', JSON.stringify(layout));
+            sessionStorage.setItem('widgetLayout', JSON.stringify(layout));
         },
 
         loadLayout() {
-            const saved = localStorage.getItem('widgetLayout');
+            const saved = sessionStorage.getItem('widgetLayout');
             if (!saved) return;
 
             try {
