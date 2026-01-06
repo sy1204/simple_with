@@ -1262,19 +1262,19 @@
                 container.innerHTML = `
                     <div class="flex-1 space-y-3">
                         <div class="space-y-1"><label class="text-xs font-medium text-slate-500">예치금 (원금)</label><div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">₩</span><input id="fin-principal" class="w-full pl-7 bg-background-light dark:bg-[#111822] rounded-lg border-none text-sm font-semibold focus:ring-2 focus:ring-primary h-9" type="text" value="10,000,000" /></div></div>
-                        <div class="flex gap-3">
-                            <div class="space-y-1 flex-1">
+                        <div class="flex gap-2">
+                            <div class="space-y-1 flex-1 max-w-[45%]">
                                 <label id="fin-rate-label" class="text-xs font-medium text-slate-500">${this.rateUnit === 'year' ? '연이율' : '월이율'} (%)</label>
                                 <div class="flex gap-1">
-                                    <input id="fin-rate" class="flex-1 bg-background-light dark:bg-[#111822] rounded-lg border-none text-sm font-semibold focus:ring-2 focus:ring-primary h-9" type="text" value="${this.rateUnit === 'year' ? '3.5' : '0.3'}" />
-                                    <button id="fin-rate-toggle" class="px-2 h-9 bg-slate-600 text-white text-xs font-bold rounded-lg hover:bg-slate-700 transition-colors">${this.rateUnit === 'year' ? '연' : '월'}</button>
+                                    <input id="fin-rate" class="flex-1 min-w-0 bg-background-light dark:bg-[#111822] rounded-lg border-none text-sm font-semibold focus:ring-2 focus:ring-primary h-9" type="text" value="${this.rateUnit === 'year' ? '3.5' : '0.3'}" />
+                                    <button id="fin-rate-toggle" class="px-2 h-9 bg-slate-600 text-white text-xs font-bold rounded-lg hover:bg-slate-700 transition-colors shrink-0">${this.rateUnit === 'year' ? '연' : '월'}</button>
                                 </div>
                             </div>
-                            <div class="space-y-1 flex-1">
+                            <div class="space-y-1 flex-1 max-w-[45%]">
                                 <label id="fin-period-label" class="text-xs font-medium text-slate-500">기간 (${this.periodUnit === 'year' ? '년' : '개월'})</label>
                                 <div class="flex gap-1">
-                                    <input id="fin-period" class="flex-1 bg-background-light dark:bg-[#111822] rounded-lg border-none text-sm font-semibold focus:ring-2 focus:ring-primary h-9" type="text" value="${this.periodUnit === 'year' ? '1' : '12'}" />
-                                    <button id="fin-period-toggle" class="px-2 h-9 bg-primary text-white text-xs font-bold rounded-lg hover:bg-blue-600 transition-colors">${this.periodUnit === 'year' ? '년' : '월'}</button>
+                                    <input id="fin-period" class="flex-1 min-w-0 bg-background-light dark:bg-[#111822] rounded-lg border-none text-sm font-semibold focus:ring-2 focus:ring-primary h-9" type="text" value="${this.periodUnit === 'year' ? '1' : '12'}" />
+                                    <button id="fin-period-toggle" class="px-2 h-9 bg-primary text-white text-xs font-bold rounded-lg hover:bg-blue-600 transition-colors shrink-0">${this.periodUnit === 'year' ? '년' : '월'}</button>
                                 </div>
                             </div>
                         </div>
