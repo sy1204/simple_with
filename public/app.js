@@ -2699,39 +2699,36 @@
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
                     const targetId = link.getAttribute('href').slice(1);
+                    if (!targetId) return; // 전체보기(#) 제외
+                    
                     const targetEl = document.getElementById(targetId);
                     if (targetEl) {
                         const header = document.querySelector('header');
                         const headerHeight = header ? header.offsetHeight : 100;
-                        const targetPosition = targetEl.offsetTop - headerHeight - 16;
-                        
                         const mainContent = document.getElementById('main-content');
+                        
                         if (mainContent) {
+                            // main-content 내부 스크롤 위치 계산
+                            const containerRect = mainContent.getBoundingClientRect();
+                            const targetRect = targetEl.getBoundingClientRect();
+                            const scrollTop = mainContent.scrollTop;
+                            const targetPosition = scrollTop + targetRect.top - containerRect.top - 16;
+                            
                             mainContent.scrollTo({ top: targetPosition, behavior: 'smooth' });
                         } else {
+                            // fallback: window 스크롤
+                            const targetPosition = targetEl.getBoundingClientRect().top + window.scrollY - headerHeight - 16;
                             window.scrollTo({ top: targetPosition, behavior: 'smooth' });
                         }
                         
                         // 현재 인덱스 업데이트
                         this.currentIndex = this.widgets.indexOf(targetId);
+                        this.updateNavActive(targetId);
                     }
                 });
             });
 
-            // 모바일 터치 스와이프 감지
-            if ('ontouchstart' in window) {
-                const mainContent = document.getElementById('main-content');
-                if (mainContent) {
-                    mainContent.addEventListener('touchstart', (e) => {
-                        this.touchStartX = e.changedTouches[0].screenX;
-                    }, { passive: true });
-
-                    mainContent.addEventListener('touchend', (e) => {
-                        this.touchEndX = e.changedTouches[0].screenX;
-                        this.handleSwipe();
-                    }, { passive: true });
-                }
-            }
+            // 모바일 터치 스와이프 감지 (위젯 간 이동은 제거 - 달력 스와이프와 충돌)
         },
 
         handleSwipe() {
