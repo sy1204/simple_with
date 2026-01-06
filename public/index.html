@@ -80,8 +80,28 @@
         }
 
         /* 부드러운 스크롤 */
-        html {
+        html, body, #main-content {
             scroll-behavior: smooth;
+        }
+        
+        /* 스크롤 시 헤더 높이만큼 여백 */
+        #main-content {
+            scroll-padding-top: 20px;
+        }
+        
+        /* 각 위젯 카드에 스크롤 마진 (헤더 가림 방지) */
+        .card {
+            scroll-margin-top: 120px;
+        }
+        @media (min-width: 768px) {
+            .card {
+                scroll-margin-top: 130px;
+            }
+        }
+        @media (min-width: 1024px) {
+            .card {
+                scroll-margin-top: 140px;
+            }
         }
 
         /* 위젯 하이라이트 애니메이션 */

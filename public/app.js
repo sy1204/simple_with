@@ -2689,11 +2689,25 @@
     // ===== 네비게이션 (메뉴 클릭 시 위젯으로 이동) =====
     const Navigation = {
         init() {
+            const mainContent = document.getElementById('main-content');
+            
+            // 페이지 로드 시 맨 위로 스크롤
+            if (mainContent) {
+                mainContent.scrollTop = 0;
+            }
+            window.scrollTo(0, 0);
+
             // 네비게이션 링크 클릭 시 해당 위젯으로 스크롤
             document.querySelectorAll('nav a[href^="#"]').forEach(link => {
                 link.addEventListener('click', (e) => {
                     const targetId = link.getAttribute('href').slice(1);
-                    if (!targetId) return; // 전체보기(#) 제외
+                    if (!targetId) {
+                        // 전체보기(#) 클릭 시 맨 위로
+                        e.preventDefault();
+                        if (mainContent) mainContent.scrollTop = 0;
+                        window.scrollTo(0, 0);
+                        return;
+                    }
                     
                     e.preventDefault();
                     this.scrollToWidget(targetId);
@@ -2703,28 +2717,11 @@
 
         scrollToWidget(targetId) {
             const targetEl = document.getElementById(targetId);
-            const mainContent = document.getElementById('main-content');
-            
-            if (!targetEl || !mainContent) return;
+            if (!targetEl) return;
 
-            // main-content 내부에서의 상대 위치 계산
-            const headerHeight = document.querySelector('header')?.offsetHeight || 120;
+            // 가장 간단하고 확실한 방법: scrollIntoView
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
             
-            // 대상 요소의 위치 계산 (main-content 기준)
-            let offsetTop = 0;
-            let el = targetEl;
-            while (el && el !== mainContent) {
-                offsetTop += el.offsetTop;
-                el = el.offsetParent;
-            }
-            
-            // 스크롤 (헤더 높이와 여백 고려)
-            const scrollPosition = offsetTop - 20;
-            mainContent.scrollTo({
-                top: scrollPosition,
-                behavior: 'smooth'
-            });
-
             // 하이라이트 효과
             this.highlightWidget(targetEl);
         },
@@ -2735,14 +2732,13 @@
                 w.classList.remove('widget-highlight');
             });
             
-            // 새 하이라이트 추가 (약간의 딜레이 후)
+            // 새 하이라이트 추가
             setTimeout(() => {
                 el.classList.add('widget-highlight');
-                // 1.5초 후 제거
                 setTimeout(() => {
                     el.classList.remove('widget-highlight');
                 }, 1500);
-            }, 300);
+            }, 400);
         }
     };
 
