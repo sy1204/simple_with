@@ -2448,47 +2448,54 @@
         async loadLivingIndex(areaNo, time) {
             const month = new Date().getMonth() + 1;
             const indices = {};
+            
+            // time은 YYYYMMDDHH 형식 (예: 2026010606)
+            // 06시 또는 18시로 맞춰야 함 (생활지수 발표 시간)
+            const baseTime = time.slice(0, 8) + '06'; // 06시 기준
+            console.log('[Weather] Living index request - areaNo:', areaNo, 'time:', baseTime);
 
             try {
                 // 자외선 지수 (연중)
-                const uvRes = await fetch(`/api/livingindex?type=UV&areaNo=${areaNo}&time=${time}`);
+                const uvRes = await fetch(`/api/livingindex?type=UV&areaNo=${areaNo}&time=${baseTime}`);
                 const uvData = await uvRes.json();
-                if (!uvData.error) {
-                    const item = uvData.response?.body?.items?.item?.[0];
-                    if (item) indices.UV = item.h0 || item.h3 || item.today;
+                console.log('[Weather] UV response:', JSON.stringify(uvData).substring(0, 300));
+                if (!uvData.error && uvData.response?.body?.items?.item) {
+                    const items = uvData.response.body.items.item;
+                    const item = Array.isArray(items) ? items[0] : items;
+                    if (item) indices.UV = item.h0 || item.h3 || item.today || item.h6;
                 }
 
                 // 식중독 지수 (3월~11월)
                 if (month >= 3 && month <= 11) {
-                    const fsnRes = await fetch(`/api/livingindex?type=fsn&areaNo=${areaNo}&time=${time}`);
+                    const fsnRes = await fetch(`/api/livingindex?type=fsn&areaNo=${areaNo}&time=${baseTime}`);
                     const fsnData = await fsnRes.json();
-                    if (!fsnData.error) {
-                        const item = fsnData.response?.body?.items?.item?.[0];
-                        if (item) indices.fsn = item.h0 || item.h3 || item.today;
+                    console.log('[Weather] FSN response:', JSON.stringify(fsnData).substring(0, 300));
+                    if (!fsnData.error && fsnData.response?.body?.items?.item) {
+                        const items = fsnData.response.body.items.item;
+                        const item = Array.isArray(items) ? items[0] : items;
+                        if (item) indices.fsn = item.h0 || item.h3 || item.today || item.h6;
                     }
-                }
-
-                // 대기확산지수 (연중)
-                const airDiffRes = await fetch(`/api/livingindex?type=airDiffusion&areaNo=${areaNo}&time=${time}`);
-                const airDiffData = await airDiffRes.json();
-                if (!airDiffData.error) {
-                    const item = airDiffData.response?.body?.items?.item?.[0];
-                    if (item) indices.airDiffusion = item.h0 || item.h3 || item.today;
                 }
 
             } catch (error) {
                 console.error('[Weather] Living index error:', error);
             }
 
+            console.log('[Weather] Living indices loaded:', indices);
             this.livingIndex = Object.keys(indices).length > 0 ? indices : null;
         },
 
         // 미세먼지 데이터 파싱
         parseAirQuality(data) {
+            console.log('[Weather] AirQuality raw data:', JSON.stringify(data).substring(0, 500));
             const items = data.response?.body?.items;
-            if (!items || items.length === 0) return null;
+            if (!items || items.length === 0) {
+                console.log('[Weather] AirQuality: No items found');
+                return null;
+            }
             
             const item = items[0];
+            console.log('[Weather] AirQuality item:', item);
             return {
                 pm10: item.pm10Value,
                 pm25: item.pm25Value,
@@ -2503,12 +2510,17 @@
 
         // 일출/일몰 데이터 파싱
         parseSunRiseSet(data) {
+            console.log('[Weather] SunRiseSet raw data:', JSON.stringify(data).substring(0, 500));
             const item = data.response?.body?.items?.item;
-            if (!item) return null;
+            if (!item) {
+                console.log('[Weather] SunRiseSet: No item found');
+                return null;
+            }
             
+            console.log('[Weather] SunRiseSet item:', item);
             return {
-                sunrise: item.sunrise ? item.sunrise.trim() : null,
-                sunset: item.sunset ? item.sunset.trim() : null,
+                sunrise: item.sunrise ? item.sunrise.toString().trim() : null,
+                sunset: item.sunset ? item.sunset.toString().trim() : null,
                 location: item.location
             };
         },
@@ -2519,29 +2531,55 @@
             return grades[grade] || '-';
         },
 
-        // 미세먼지 등급 색상
-        getAirGradeColor(grade) {
-            const colors = { '1': '🟢', '2': '🟡', '3': '🟠', '4': '🔴' };
-            return colors[grade] || '⚪';
+        // 미세먼지 등급 색상 클래스
+        getAirGradeClass(grade) {
+            const classes = { 
+                '1': 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400', 
+                '2': 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400', 
+                '3': 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400', 
+                '4': 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' 
+            };
+            return classes[grade] || 'bg-slate-100 text-slate-500';
         },
 
-        // 자외선 지수 텍스트
-        getUVText(value) {
-            const v = parseInt(value);
-            if (v <= 2) return '낮음';
-            if (v <= 5) return '보통';
-            if (v <= 7) return '높음';
-            if (v <= 10) return '매우높음';
-            return '위험';
+        // 풍향 (VEC: 0~360도) → 방향 텍스트 및 화살표
+        getWindDirection(vec) {
+            if (vec === null || vec === undefined || vec === '-') return { text: '-', arrow: '→' };
+            const v = parseFloat(vec);
+            const directions = [
+                { min: 0, max: 22.5, text: '북', arrow: '↓' },
+                { min: 22.5, max: 67.5, text: '북동', arrow: '↙' },
+                { min: 67.5, max: 112.5, text: '동', arrow: '←' },
+                { min: 112.5, max: 157.5, text: '남동', arrow: '↖' },
+                { min: 157.5, max: 202.5, text: '남', arrow: '↑' },
+                { min: 202.5, max: 247.5, text: '남서', arrow: '↗' },
+                { min: 247.5, max: 292.5, text: '서', arrow: '→' },
+                { min: 292.5, max: 337.5, text: '북서', arrow: '↘' },
+                { min: 337.5, max: 360, text: '북', arrow: '↓' }
+            ];
+            for (const d of directions) {
+                if (v >= d.min && v < d.max) return d;
+            }
+            return { text: '북', arrow: '↓' };
         },
 
-        // 식중독 지수 텍스트
-        getFsnText(value) {
+        // 자외선 지수 텍스트 및 색상
+        getUVInfo(value) {
             const v = parseInt(value);
-            if (v <= 55) return '낮음';
-            if (v <= 70) return '보통';
-            if (v <= 85) return '높음';
-            return '매우높음';
+            if (v <= 2) return { text: '낮음', class: 'text-green-500' };
+            if (v <= 5) return { text: '보통', class: 'text-yellow-500' };
+            if (v <= 7) return { text: '높음', class: 'text-orange-500' };
+            if (v <= 10) return { text: '매우높음', class: 'text-red-500' };
+            return { text: '위험', class: 'text-purple-500' };
+        },
+
+        // 식중독 지수 텍스트 및 색상
+        getFsnInfo(value) {
+            const v = parseInt(value);
+            if (v <= 55) return { text: '낮음', class: 'text-green-500' };
+            if (v <= 70) return { text: '보통', class: 'text-yellow-500' };
+            if (v <= 85) return { text: '높음', class: 'text-orange-500' };
+            return { text: '매우높음', class: 'text-red-500' };
         },
 
         // 지역명에서 중기예보 지역 코드 찾기
@@ -2835,10 +2873,18 @@
             const humidity = this.data.REH || '-';
             const pty = this.data.PTY || '0';
             const wind = this.data.WSD || '-';
+            const vec = this.data.VEC || this.data.UUU || '-'; // 풍향
+            const windDir = this.getWindDirection(vec);
 
             const icon = this.getWeatherIcon(pty, '1');
             const condition = this.getWeatherName(pty, '1');
             const feelsLike = this.calcFeelsLike(temp, wind, humidity);
+            
+            console.log('[Weather] Render data:', { 
+                airQuality: this.airQuality, 
+                sunRiseSet: this.sunRiseSet, 
+                livingIndex: this.livingIndex 
+            });
 
             // 시간대별 예보 HTML (48시간)
             let hourlyHtml = '';
@@ -2898,29 +2944,35 @@
                 `;
             }
 
-            // 미세먼지 정보 HTML
+            // 미세먼지 정보 HTML (기준치 범례 포함)
             let airHtml = '';
             if (this.airQuality) {
                 const pm10 = this.airQuality.pm10 || '-';
                 const pm25 = this.airQuality.pm25 || '-';
-                const pm10Grade = this.getAirGradeColor(this.airQuality.pm10Grade);
-                const pm25Grade = this.getAirGradeColor(this.airQuality.pm25Grade);
+                const pm10Class = this.getAirGradeClass(this.airQuality.pm10Grade);
+                const pm25Class = this.getAirGradeClass(this.airQuality.pm25Grade);
                 const pm10Text = this.getAirGradeText(this.airQuality.pm10Grade);
                 const pm25Text = this.getAirGradeText(this.airQuality.pm25Grade);
                 
                 airHtml = `
                     <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                        <div class="flex items-center justify-around">
+                        <div class="flex items-center justify-around mb-2">
                             <div class="text-center">
-                                <p class="text-[10px] text-slate-400 mb-1">미세먼지</p>
-                                <p class="text-sm font-bold">${pm10Grade} ${pm10Text}</p>
-                                <p class="text-[10px] text-slate-500">${pm10}㎍/㎥</p>
+                                <p class="text-[10px] text-slate-400 mb-1">미세먼지 (PM10)</p>
+                                <span class="inline-block px-2 py-0.5 rounded-full text-xs font-bold ${pm10Class}">${pm10Text}</span>
+                                <p class="text-[10px] text-slate-500 mt-1">${pm10}㎍/㎥</p>
                             </div>
                             <div class="text-center">
-                                <p class="text-[10px] text-slate-400 mb-1">초미세먼지</p>
-                                <p class="text-sm font-bold">${pm25Grade} ${pm25Text}</p>
-                                <p class="text-[10px] text-slate-500">${pm25}㎍/㎥</p>
+                                <p class="text-[10px] text-slate-400 mb-1">초미세먼지 (PM2.5)</p>
+                                <span class="inline-block px-2 py-0.5 rounded-full text-xs font-bold ${pm25Class}">${pm25Text}</span>
+                                <p class="text-[10px] text-slate-500 mt-1">${pm25}㎍/㎥</p>
                             </div>
+                        </div>
+                        <div class="flex justify-center gap-2 text-[9px] text-slate-400">
+                            <span class="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30">좋음 0~30</span>
+                            <span class="px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30">보통 31~80</span>
+                            <span class="px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30">나쁨 81~150</span>
+                            <span class="px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30">매우나쁨 151~</span>
                         </div>
                     </div>
                 `;
@@ -2930,23 +2982,29 @@
             let lifeHtml = '';
             const lifeItems = [];
             
+            // 자외선 지수
             if (this.livingIndex?.UV) {
-                lifeItems.push(`<span class="text-xs">☀️ 자외선 ${this.getUVText(this.livingIndex.UV)}</span>`);
+                const uvInfo = this.getUVInfo(this.livingIndex.UV);
+                lifeItems.push(`<div class="flex items-center gap-1"><span>☀️</span><span class="text-xs ${uvInfo.class} font-medium">자외선 ${uvInfo.text}</span></div>`);
             }
+            // 식중독 지수
             if (this.livingIndex?.fsn) {
-                lifeItems.push(`<span class="text-xs">🍱 식중독 ${this.getFsnText(this.livingIndex.fsn)}</span>`);
+                const fsnInfo = this.getFsnInfo(this.livingIndex.fsn);
+                lifeItems.push(`<div class="flex items-center gap-1"><span>🍱</span><span class="text-xs ${fsnInfo.class} font-medium">식중독 ${fsnInfo.text}</span></div>`);
             }
-            if (this.sunRiseSet) {
+            // 일출/일몰
+            if (this.sunRiseSet?.sunrise || this.sunRiseSet?.sunset) {
                 const sunrise = this.sunRiseSet.sunrise ? this.sunRiseSet.sunrise.slice(0, 2) + ':' + this.sunRiseSet.sunrise.slice(2, 4) : '-';
                 const sunset = this.sunRiseSet.sunset ? this.sunRiseSet.sunset.slice(0, 2) + ':' + this.sunRiseSet.sunset.slice(2, 4) : '-';
-                lifeItems.push(`<span class="text-xs">🌅 ${sunrise}</span>`);
-                lifeItems.push(`<span class="text-xs">🌇 ${sunset}</span>`);
+                lifeItems.push(`<div class="flex items-center gap-2 text-xs text-slate-500"><span>🌅 ${sunrise}</span><span>🌇 ${sunset}</span></div>`);
             }
             
             if (lifeItems.length > 0) {
                 lifeHtml = `
-                    <div class="mt-2 flex flex-wrap justify-center gap-3 text-slate-600 dark:text-slate-400">
-                        ${lifeItems.join('')}
+                    <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <div class="flex flex-wrap justify-center gap-4">
+                            ${lifeItems.join('')}
+                        </div>
                     </div>
                 `;
             }
@@ -2962,18 +3020,18 @@
                     </div>
                     <div class="text-right space-y-1">
                         ${feelsLike !== null ? `
-                            <div class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <div class="flex items-center justify-end gap-2 text-sm text-slate-600 dark:text-slate-400">
                                 <span class="material-symbols-outlined text-lg">thermostat</span>
                                 <span>체감 ${feelsLike}°</span>
                             </div>
                         ` : ''}
-                        <div class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                        <div class="flex items-center justify-end gap-2 text-sm text-slate-600 dark:text-slate-400">
                             <span class="material-symbols-outlined text-lg">water_drop</span>
                             <span>습도 ${humidity}%</span>
                         </div>
-                        <div class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                            <span class="material-symbols-outlined text-lg">air</span>
-                            <span>풍속 ${wind}m/s</span>
+                        <div class="flex items-center justify-end gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <span class="text-lg font-bold">${windDir.arrow}</span>
+                            <span>${windDir.text}풍 ${wind}m/s</span>
                         </div>
                     </div>
                 </div>
