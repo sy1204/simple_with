@@ -22,15 +22,14 @@ module.exports = async function handler(req, res) {
     const CLIENT_ID = process.env.NAVER_CLIENT_ID;
     const CLIENT_SECRET = process.env.NAVER_CLIENT_SECRET;
 
-    // 디버깅: 환경변수 확인
-    console.log('[Translate] NAVER_CLIENT_ID exists:', !!CLIENT_ID);
-    console.log('[Translate] NAVER_CLIENT_SECRET exists:', !!CLIENT_SECRET);
+    console.log('[Translate] CLIENT_ID exists:', !!CLIENT_ID);
+    console.log('[Translate] CLIENT_SECRET exists:', !!CLIENT_SECRET);
 
     if (!CLIENT_ID || !CLIENT_SECRET) {
         return res.status(200).json({
             error: {
                 code: 'CONFIG_ERROR',
-                message: 'Vercel에 네이버 API 키가 설정되지 않았습니다. (ID: ' + (CLIENT_ID ? '있음' : '없음') + ', Secret: ' + (CLIENT_SECRET ? '있음' : '없음') + ')'
+                message: 'Vercel에 네이버 API 키가 설정되지 않았습니다.'
             }
         });
     }
@@ -48,31 +47,46 @@ module.exports = async function handler(req, res) {
         // 1. 언어 감지 (source가 'auto'인 경우)
         let detectedSource = source;
         if (source === 'auto') {
-            const detectResponse = await fetch('https://openapi.naver.com/v1/papago/detectLangs', {
-                method: 'POST',
-                headers: {
-                    'X-Naver-Client-Id': CLIENT_ID,
-                    'X-Naver-Client-Secret': CLIENT_SECRET,
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: `query=${encodeURIComponent(text)}`
-            });
+            try {
+                const detectResponse = await fetch('https://openapi.naver.com/v1/papago/detectLangs', {
+                    method: 'POST',
+                    headers: {
+                        'X-Naver-Client-Id': CLIENT_ID,
+                        'X-Naver-Client-Secret': CLIENT_SECRET,
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: `query=${encodeURIComponent(text)}`
+                });
 
-            if (detectResponse.ok) {
-                const detectData = await detectResponse.json();
-                detectedSource = detectData.langCode || 'en';
-            } else {
-                detectedSource = 'en'; // 감지 실패 시 기본값
+                console.log('[Translate] Detect response status:', detectResponse.status);
+
+                if (detectResponse.ok) {
+                    const detectData = await detectResponse.json();
+                    detectedSource = detectData.langCode || 'en';
+                    console.log('[Translate] Detected language:', detectedSource);
+                } else {
+                    // 언어 감지 실패 시 기본값
+                    const isKorean = /[가-힣]/.test(text);
+                    detectedSource = isKorean ? 'ko' : 'en';
+                    console.log('[Translate] Detection failed, guessing:', detectedSource);
+                }
+            } catch (e) {
+                // 언어 감지 실패 시 기본값
+                const isKorean = /[가-힣]/.test(text);
+                detectedSource = isKorean ? 'ko' : 'en';
+                console.log('[Translate] Detection error, guessing:', detectedSource);
             }
         }
 
-        // 2. 타겟 언어 자동 설정 (한국어면 영어로, 그 외면 한국어로)
+        // 2. 타겟 언어 자동 설정
         let finalTarget = target;
         if (target === 'auto') {
             finalTarget = detectedSource === 'ko' ? 'en' : 'ko';
         }
 
         // 3. 번역 API 호출
+        console.log(`[Translate] Translating from ${detectedSource} to ${finalTarget}`);
+        
         const translateResponse = await fetch('https://openapi.naver.com/v1/papago/n2mt', {
             method: 'POST',
             headers: {
@@ -83,9 +97,22 @@ module.exports = async function handler(req, res) {
             body: `source=${detectedSource}&target=${finalTarget}&text=${encodeURIComponent(text)}`
         });
 
+        console.log('[Translate] Translate response status:', translateResponse.status);
+
         if (!translateResponse.ok) {
             const errorText = await translateResponse.text();
-            console.error('Papago API Error:', translateResponse.status, errorText);
+            console.error('[Translate] API Error:', errorText);
+            
+            // 404인 경우 API 미등록 안내
+            if (translateResponse.status === 404) {
+                return res.status(200).json({
+                    error: {
+                        code: 'API_NOT_FOUND',
+                        message: '파파고 API가 네이버 개발자센터에서 활성화되지 않았습니다. 애플리케이션 설정에서 "Papago 번역"을 추가해주세요.'
+                    }
+                });
+            }
+            
             return res.status(200).json({
                 error: {
                     code: 'API_FETCH_FAILED',
@@ -96,15 +123,12 @@ module.exports = async function handler(req, res) {
 
         const data = await translateResponse.json();
 
-        // 응답 형식 통일
-        const result = {
+        res.status(200).json({
             source: detectedSource,
             target: finalTarget,
             text: text,
             translatedText: data.message?.result?.translatedText || ''
-        };
-
-        res.status(200).json(result);
+        });
 
     } catch (error) {
         console.error('Translate API Error:', error);
@@ -116,4 +140,3 @@ module.exports = async function handler(req, res) {
         });
     }
 };
-

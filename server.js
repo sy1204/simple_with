@@ -270,7 +270,7 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    // ===== API 엔드포인트: /api/weather (기상청) =====
+    // ===== API 엔드포인트: /api/weather (기상청 API허브) =====
     if (pathname === '/api/weather') {
         const nx = parsedUrl.query.nx || '60';  // 서울 기본값
         const ny = parsedUrl.query.ny || '127';
@@ -284,32 +284,33 @@ const server = http.createServer(async (req, res) => {
 
         try {
             const now = new Date();
-            const baseDate = now.toISOString().slice(0, 10).replace(/-/g, '');
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const baseDate = `${year}${month}${day}`;
             
-            // 초단기실황: 매시 정각 발표, 10분 후부터 사용 가능
-            let baseTime;
-            if (type === 'ultra') {
-                const hour = now.getHours();
-                baseTime = String(hour).padStart(2, '0') + '00';
-            } else {
-                // 단기예보: 02, 05, 08, 11, 14, 17, 20, 23시 발표
-                const hours = [2, 5, 8, 11, 14, 17, 20, 23];
-                const currentHour = now.getHours();
-                let baseHour = hours.filter(h => h <= currentHour).pop() || 23;
-                baseTime = String(baseHour).padStart(2, '0') + '00';
+            // 초단기실황: 매시 정각 발표, 40분 후부터 사용 가능
+            let hour = now.getHours();
+            const minutes = now.getMinutes();
+            if (minutes < 40) {
+                hour = hour - 1;
+                if (hour < 0) hour = 23;
             }
+            const baseTime = String(hour).padStart(2, '0') + '00';
 
             const endpoint = type === 'ultra' 
                 ? 'getUltraSrtNcst'  // 초단기실황
                 : 'getVilageFcst';   // 단기예보
 
-            // 공공데이터포털 API 키는 이미 인코딩되어 있으므로 그대로 사용
-            const apiUrl = `http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/${endpoint}?serviceKey=${KMA_API_KEY}&numOfRows=100&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}`;
+            // 기상청 API허브 URL 형식
+            const apiUrl = `https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0/${endpoint}?pageNo=1&numOfRows=100&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}&authKey=${KMA_API_KEY}`;
             
             console.log(`[Weather] Fetching ${type}: ${baseDate} ${baseTime} (${nx}, ${ny})`);
 
             const apiResponse = await fetch(apiUrl);
             const responseText = await apiResponse.text();
+
+            console.log(`[Weather] Response status: ${apiResponse.status}`);
 
             if (!apiResponse.ok) {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });

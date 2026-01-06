@@ -1,5 +1,5 @@
 // c:\Users\User\workspace\simple_with\api\weather.js
-// 기상청 공공데이터 API 프록시
+// 기상청 API허브 프록시
 // Vercel Serverless Function
 
 module.exports = async function handler(req, res) {
@@ -30,40 +30,39 @@ module.exports = async function handler(req, res) {
     try {
         const now = new Date();
         // 한국 시간으로 변환 (UTC+9)
-        const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
-        const baseDate = koreaTime.toISOString().slice(0, 10).replace(/-/g, '');
+        const kstOffset = 9 * 60 * 60 * 1000;
+        const koreaTime = new Date(now.getTime() + kstOffset);
+        
+        const year = koreaTime.getUTCFullYear();
+        const month = String(koreaTime.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(koreaTime.getUTCDate()).padStart(2, '0');
+        const baseDate = `${year}${month}${day}`;
         
         // 시간 계산
-        let baseTime;
-        if (type === 'ultra') {
-            // 초단기실황: 매시 정각 발표 (10분 후부터 사용 가능)
-            let hour = koreaTime.getUTCHours();
-            const minutes = koreaTime.getUTCMinutes();
-            // 발표 후 10분이 지나지 않았다면 이전 시간 사용
-            if (minutes < 10) {
-                hour = hour - 1;
-                if (hour < 0) hour = 23;
-            }
-            baseTime = String(hour).padStart(2, '0') + '00';
-        } else {
-            // 단기예보: 02, 05, 08, 11, 14, 17, 20, 23시 발표
-            const hours = [2, 5, 8, 11, 14, 17, 20, 23];
-            const currentHour = koreaTime.getUTCHours();
-            let baseHour = hours.filter(h => h <= currentHour).pop();
-            if (baseHour === undefined) baseHour = 23;
-            baseTime = String(baseHour).padStart(2, '0') + '00';
+        let hour = koreaTime.getUTCHours();
+        const minutes = koreaTime.getUTCMinutes();
+        
+        // 초단기실황: 매시 정각 발표, 40분 후부터 사용 가능
+        if (minutes < 40) {
+            hour = hour - 1;
+            if (hour < 0) hour = 23;
         }
+        const baseTime = String(hour).padStart(2, '0') + '00';
 
         const endpoint = type === 'ultra' 
             ? 'getUltraSrtNcst'  // 초단기실황
             : 'getVilageFcst';   // 단기예보
 
-        // 공공데이터포털 API 키는 이미 인코딩되어 있으므로 그대로 사용
-        const apiUrl = `http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/${endpoint}?serviceKey=${KMA_API_KEY}&numOfRows=100&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}`;
+        // 기상청 API허브 URL 형식
+        const apiUrl = `https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0/${endpoint}?pageNo=1&numOfRows=100&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}&authKey=${KMA_API_KEY}`;
         
-        console.log(`[Weather] Requesting: ${baseDate} ${baseTime}, nx=${nx}, ny=${ny}`);
+        console.log(`[Weather] Request: ${baseDate} ${baseTime}, nx=${nx}, ny=${ny}`);
 
         const response = await fetch(apiUrl);
+        const responseText = await response.text();
+        
+        console.log(`[Weather] Response status: ${response.status}`);
+        console.log(`[Weather] Response preview: ${responseText.substring(0, 200)}`);
 
         if (!response.ok) {
             return res.status(200).json({
@@ -74,8 +73,6 @@ module.exports = async function handler(req, res) {
             });
         }
 
-        const responseText = await response.text();
-        
         // 빈 응답 처리
         if (!responseText || responseText.trim() === '') {
             return res.status(200).json({
@@ -91,10 +88,11 @@ module.exports = async function handler(req, res) {
         try {
             data = JSON.parse(responseText);
         } catch (e) {
+            // HTML 에러 페이지 등 반환 시
             return res.status(200).json({
                 error: {
                     code: 'PARSE_ERROR',
-                    message: '기상청 API 응답을 파싱할 수 없습니다.'
+                    message: '기상청 API 응답을 파싱할 수 없습니다. 응답: ' + responseText.substring(0, 100)
                 }
             });
         }
@@ -121,4 +119,3 @@ module.exports = async function handler(req, res) {
         });
     }
 };
-
