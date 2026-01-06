@@ -2686,11 +2686,8 @@
         }
     };
 
-    // ===== 모바일 네비게이션 =====
-    const MobileNav = {
-        widgets: ['calendar', 'todo', 'time-widget', 'calculator', 'finance', 'converter', 'memo', 'dictionary', 'weather'],
-        currentIndex: 0,
-
+    // ===== 네비게이션 (메뉴 클릭 시 위젯으로 이동) =====
+    const Navigation = {
         init() {
             // 네비게이션 링크 클릭 시 해당 위젯으로 스크롤
             document.querySelectorAll('nav a[href^="#"]').forEach(link => {
@@ -2699,77 +2696,53 @@
                     if (!targetId) return; // 전체보기(#) 제외
                     
                     e.preventDefault();
-                    const targetEl = document.getElementById(targetId);
-                    if (targetEl) {
-                        // scrollIntoView 사용 (가장 확실한 방법)
-                        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        
-                        // 헤더 높이만큼 추가 스크롤 (약간의 딜레이 후)
-                        setTimeout(() => {
-                            const header = document.querySelector('header');
-                            const headerHeight = header ? header.offsetHeight : 100;
-                            window.scrollBy({ top: -headerHeight - 10, behavior: 'smooth' });
-                        }, 100);
-                        
-                        // 현재 인덱스 업데이트
-                        this.currentIndex = this.widgets.indexOf(targetId);
-                        this.updateNavActive(targetId);
-                    }
+                    this.scrollToWidget(targetId);
                 });
             });
         },
 
-        handleSwipe() {
-            const swipeThreshold = 80; // 최소 스와이프 거리
-            const diff = this.touchStartX - this.touchEndX;
-
-            if (Math.abs(diff) < swipeThreshold) return;
-
-            if (diff > 0) {
-                // 왼쪽으로 스와이프 → 다음 위젯
-                this.navigateTo(this.currentIndex + 1);
-            } else {
-                // 오른쪽으로 스와이프 → 이전 위젯
-                this.navigateTo(this.currentIndex - 1);
-            }
-        },
-
-        navigateTo(index) {
-            // 인덱스 범위 체크
-            if (index < 0) index = 0;
-            if (index >= this.widgets.length) index = this.widgets.length - 1;
-            if (index === this.currentIndex) return;
-
-            this.currentIndex = index;
-            const targetId = this.widgets[index];
+        scrollToWidget(targetId) {
             const targetEl = document.getElementById(targetId);
+            const mainContent = document.getElementById('main-content');
+            
+            if (!targetEl || !mainContent) return;
 
-            if (targetEl) {
-                const header = document.querySelector('header');
-                const headerHeight = header ? header.offsetHeight : 100;
-                const targetPosition = targetEl.offsetTop - headerHeight - 16;
-
-                const mainContent = document.getElementById('main-content');
-                if (mainContent) {
-                    mainContent.scrollTo({ top: targetPosition, behavior: 'smooth' });
-                }
-
-                // 네비게이션 활성 표시 업데이트 (선택)
-                this.updateNavActive(targetId);
+            // main-content 내부에서의 상대 위치 계산
+            const headerHeight = document.querySelector('header')?.offsetHeight || 120;
+            
+            // 대상 요소의 위치 계산 (main-content 기준)
+            let offsetTop = 0;
+            let el = targetEl;
+            while (el && el !== mainContent) {
+                offsetTop += el.offsetTop;
+                el = el.offsetParent;
             }
+            
+            // 스크롤 (헤더 높이와 여백 고려)
+            const scrollPosition = offsetTop - 20;
+            mainContent.scrollTo({
+                top: scrollPosition,
+                behavior: 'smooth'
+            });
+
+            // 하이라이트 효과
+            this.highlightWidget(targetEl);
         },
 
-        updateNavActive(targetId) {
-            document.querySelectorAll('nav a').forEach(link => {
-                const href = link.getAttribute('href');
-                if (href === `#${targetId}`) {
-                    link.classList.add('text-primary', 'font-semibold');
-                    link.classList.remove('text-slate-600', 'dark:text-slate-400');
-                } else if (href !== '#') {
-                    link.classList.remove('text-primary', 'font-semibold');
-                    link.classList.add('text-slate-600', 'dark:text-slate-400');
-                }
+        highlightWidget(el) {
+            // 기존 하이라이트 제거
+            document.querySelectorAll('.widget-highlight').forEach(w => {
+                w.classList.remove('widget-highlight');
             });
+            
+            // 새 하이라이트 추가 (약간의 딜레이 후)
+            setTimeout(() => {
+                el.classList.add('widget-highlight');
+                // 1.5초 후 제거
+                setTimeout(() => {
+                    el.classList.remove('widget-highlight');
+                }, 1500);
+            }, 300);
         }
     };
 
@@ -2785,6 +2758,6 @@
         Memo.init();
         Dictionary.init();
         Weather.init();
-        MobileNav.init();
+        Navigation.init();
     });
 })();

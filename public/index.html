@@ -84,6 +84,24 @@
             scroll-behavior: smooth;
         }
 
+        /* 위젯 하이라이트 애니메이션 */
+        @keyframes widget-highlight {
+            0%, 100% { box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+            25% { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); }
+            50% { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3); }
+            75% { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); }
+        }
+        .widget-highlight {
+            animation: widget-highlight 1s ease-in-out;
+        }
+        .widget-highlight h3 {
+            animation: pulse 0.5s ease-in-out 2;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
         /* Anti-Blue (눈 보호) 테마 - 웜 톤 */
         .anti-blue {
             background-color: #f5ede0 !important;
