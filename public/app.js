@@ -1753,9 +1753,23 @@
         currentIdx: Storage.get('weatherCurrentIdx', 0),
         data: null,
 
-        // 전국 주요 동네 격자 좌표 (약 300개)
+        // 전국 주요 지역 격자 좌표 (시/구/동 단위)
         locations: [
-            // 서울
+            // === 서울특별시 (구 단위) ===
+            { name: '서울 종로구', nx: 60, ny: 127 }, { name: '서울 중구', nx: 60, ny: 127 },
+            { name: '서울 용산구', nx: 60, ny: 126 }, { name: '서울 성동구', nx: 61, ny: 127 },
+            { name: '서울 광진구', nx: 62, ny: 126 }, { name: '서울 동대문구', nx: 61, ny: 127 },
+            { name: '서울 중랑구', nx: 62, ny: 128 }, { name: '서울 성북구', nx: 61, ny: 128 },
+            { name: '서울 강북구', nx: 61, ny: 129 }, { name: '서울 도봉구', nx: 61, ny: 130 },
+            { name: '서울 노원구', nx: 61, ny: 130 }, { name: '서울 은평구', nx: 59, ny: 128 },
+            { name: '서울 서대문구', nx: 59, ny: 127 }, { name: '서울 마포구', nx: 59, ny: 127 },
+            { name: '서울 양천구', nx: 57, ny: 126 }, { name: '서울 강서구', nx: 57, ny: 126 },
+            { name: '서울 구로구', nx: 57, ny: 125 }, { name: '서울 금천구', nx: 58, ny: 124 },
+            { name: '서울 영등포구', nx: 58, ny: 126 }, { name: '서울 동작구', nx: 59, ny: 125 },
+            { name: '서울 관악구', nx: 59, ny: 125 }, { name: '서울 서초구', nx: 61, ny: 125 },
+            { name: '서울 강남구', nx: 61, ny: 126 }, { name: '서울 송파구', nx: 62, ny: 126 },
+            { name: '서울 강동구', nx: 63, ny: 126 },
+            // 서울 동 단위
             { name: '종로구 종로동', nx: 60, ny: 127 }, { name: '종로구 청운효자동', nx: 60, ny: 127 },
             { name: '중구 명동', nx: 60, ny: 127 }, { name: '중구 을지로동', nx: 60, ny: 127 },
             { name: '용산구 이태원동', nx: 60, ny: 126 }, { name: '용산구 한남동', nx: 60, ny: 126 },
@@ -1876,6 +1890,15 @@
             return this.favorites[this.currentIdx] || this.favorites[0] || { name: '서울', nx: 60, ny: 127 };
         },
 
+        // 버튼에 표시할 짧은 이름 생성
+        getShortName(name) {
+            const parts = name.split(' ');
+            // 2단어 이하면 전체 표시
+            if (parts.length <= 2) return name;
+            // 3단어 이상이면 마지막 2단어
+            return parts.slice(-2).join(' ');
+        },
+
         bindEvents() {
             // 설정 버튼
             document.getElementById('weather-settings-btn')?.addEventListener('click', () => this.openModal());
@@ -1912,7 +1935,7 @@
                         ? 'bg-primary text-white' 
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-primary/20'
                 }" data-idx="${idx}">
-                    ${fav.name.split(' ').pop()}
+                    ${this.getShortName(fav.name)}
                 </button>
             `).join('');
 
@@ -2083,7 +2106,9 @@
                 }
 
                 this.data = this.parseCurrentWeather(currentData);
-                this.forecast = this.parseForecast(forecastData);
+                // 단기예보 에러는 무시하고 현재 날씨만이라도 표시
+                this.forecast = forecastData.error ? { hourly: [], daily: [] } : this.parseForecast(forecastData);
+                console.log('[Weather] Forecast data:', this.forecast);
                 this.render();
             } catch (error) {
                 this.showError('날씨 정보를 불러올 수 없습니다: ' + error.message);
@@ -2101,6 +2126,7 @@
 
         parseForecast(data) {
             const items = data.response?.body?.items?.item || [];
+            console.log('[Weather] Forecast items:', items.length);
             if (!items.length) return { hourly: [], daily: [] };
 
             // 시간별로 그룹핑
@@ -2117,17 +2143,22 @@
                 `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)
             );
 
-            // 오늘 시간대별 (최대 8개)
+            // 한국 시간 기준 오늘 날짜
             const now = new Date();
-            const currentHour = now.getHours();
-            const today = now.toISOString().slice(0, 10).replace(/-/g, '');
+            const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+            const currentHour = kstNow.getUTCHours();
+            const today = kstNow.toISOString().slice(0, 10).replace(/-/g, '');
+            console.log('[Weather] Today:', today, 'Current hour:', currentHour);
             
+            // 현재 시간 이후의 예보 (오늘+내일 포함, 최대 8개)
+            const nowStr = `${today}${String(currentHour).padStart(2, '0')}00`;
             const hourly = forecasts
                 .filter(f => {
-                    const fHour = parseInt(f.time.slice(0, 2));
-                    return f.date === today && fHour >= currentHour;
+                    const fStr = `${f.date}${f.time}`;
+                    return fStr >= nowStr && f.TMP; // TMP가 있는 것만
                 })
                 .slice(0, 8);
+            console.log('[Weather] Hourly forecasts:', hourly.length);
 
             // 일별 (최저/최고 기온)
             const byDate = {};
