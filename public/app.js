@@ -2372,19 +2372,22 @@
             const now = new Date();
             const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
             
-            // 오늘 날짜 (한국시간)
-            const todayDate = new Date(kstNow);
-            todayDate.setUTCHours(0, 0, 0, 0);
+            // 오늘 날짜 (KST)
+            const todayKST = new Date(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate());
 
-            // 모레(+2일)부터 9일(+10일)까지 = 총 최대 9일
+            // 모레(+2일)부터 10일 후까지 확인
             for (let i = 2; i <= 10; i++) {
-                const targetDate = new Date(todayDate);
-                targetDate.setUTCDate(targetDate.getUTCDate() + i);
-                const dateStr = `${targetDate.getUTCFullYear()}${String(targetDate.getUTCMonth() + 1).padStart(2, '0')}${String(targetDate.getUTCDate()).padStart(2, '0')}`;
+                const targetDate = new Date(todayKST);
+                targetDate.setDate(targetDate.getDate() + i);
+                
+                const year = targetDate.getFullYear();
+                const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+                const day = String(targetDate.getDate()).padStart(2, '0');
+                const dateStr = `${year}${month}${day}`;
                 
                 let found = false;
                 
-                // 단기예보에서 먼저 찾기 (더 정확함)
+                // 1. 단기예보에서 먼저 찾기 (보통 오늘~모레까지 제공)
                 if (this.forecast?.daily?.length) {
                     const shortDay = this.forecast.daily.find(d => d.date === dateStr);
                     if (shortDay) {
@@ -2400,8 +2403,9 @@
                     }
                 }
                 
-                // 단기예보에 없으면 중기예보에서 찾기 (+3일~+10일)
-                if (!found && this.midForecast?.length && i >= 3) {
+                // 2. 단기예보에 없으면 중기예보에서 찾기 (+3일~+10일)
+                if (!found && this.midForecast?.length) {
+                    // 중기예보는 dayOffset(3~10)으로 직접 매핑되어 있음
                     const midDay = this.midForecast.find(d => d.dayOffset === i);
                     if (midDay) {
                         result.push({
@@ -2416,7 +2420,7 @@
                 }
             }
 
-            console.log('[Weather] Combined daily:', result.length, result.map(r => r.dayName));
+            console.log('[Weather] Combined daily items:', result.length);
             return result;
         },
 
