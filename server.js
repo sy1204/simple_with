@@ -628,13 +628,14 @@ const server = http.createServer(async (req, res) => {
             return;
         }
 
-        let apiUrl = `http://apis.data.go.kr/B090041/openapi/service/RiseSetInfoService/getLCRiseSetInfo?serviceKey=${DATA_GO_KR_API_KEY}&locdate=${locdate}&dnYn=Y`;
-        if (location) apiUrl += `&location=${encodeURIComponent(location)}`;
+        let apiUrl = `http://apis.data.go.kr/B090041/openapi/service/RiseSetInfoService/getLCRiseSetInfo?serviceKey=${DATA_GO_KR_API_KEY}&locdate=${locdate}`;
+        apiUrl += `&location=${encodeURIComponent(location || '서울')}`;
 
         try {
             console.log(`[SunRiseSet] Fetching: ${apiUrl.replace(DATA_GO_KR_API_KEY, 'HIDDEN')}`);
             const apiResponse = await fetch(apiUrl);
             const text = await apiResponse.text();
+            console.log(`[SunRiseSet] Response:`, text.substring(0, 500));
             
             // XML 파싱
             const parseXml = (xml, tag) => {
@@ -642,14 +643,26 @@ const server = http.createServer(async (req, res) => {
                 return match ? match[1].trim() : null;
             };
             
+            // 에러 체크
+            const resultCode = parseXml(text, 'resultCode');
+            if (resultCode && resultCode !== '00') {
+                const resultMsg = parseXml(text, 'resultMsg');
+                console.error('[SunRiseSet] API Error:', resultCode, resultMsg);
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ error: { code: resultCode, message: resultMsg } }));
+                return;
+            }
+            
             const data = {
-                location: parseXml(text, 'location') || location,
+                location: parseXml(text, 'location') || location || '서울',
                 locdate: parseXml(text, 'locdate') || locdate,
                 sunrise: parseXml(text, 'sunrise'),
                 sunset: parseXml(text, 'sunset'),
                 moonrise: parseXml(text, 'moonrise'),
                 moonset: parseXml(text, 'moonset')
             };
+            
+            console.log('[SunRiseSet] Parsed data:', data);
 
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify({ response: { body: { items: { item: data } } } }));

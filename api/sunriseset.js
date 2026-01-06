@@ -28,10 +28,13 @@ module.exports = async function handler(req, res) {
             return res.status(400).json({ error: { code: 'MISSING_PARAM', message: 'locdate 파라미터가 필요합니다. (형식: YYYYMMDD)' } });
         }
 
-        let apiUrl = `http://apis.data.go.kr/B090041/openapi/service/RiseSetInfoService/getLCRiseSetInfo?serviceKey=${API_KEY}&locdate=${locdate}&dnYn=Y`;
+        // location 없이 locdate만 있으면 기본 위치(서울) 사용
+        let apiUrl = `http://apis.data.go.kr/B090041/openapi/service/RiseSetInfoService/getLCRiseSetInfo?serviceKey=${API_KEY}&locdate=${locdate}`;
         
         if (location) {
             apiUrl += `&location=${encodeURIComponent(location)}`;
+        } else {
+            apiUrl += `&location=${encodeURIComponent('서울')}`;
         }
 
         console.log('[SunRiseSet] Fetching:', apiUrl.replace(API_KEY, 'API_KEY_HIDDEN'));
@@ -52,7 +55,8 @@ module.exports = async function handler(req, res) {
 
         const resultCode = parseXmlValue(text, 'resultCode');
         
-        if (resultCode !== '00') {
+        // resultCode가 없거나 00이 아닌 경우 에러
+        if (resultCode && resultCode !== '00') {
             const resultMsg = parseXmlValue(text, 'resultMsg');
             console.error('[SunRiseSet] API Error:', resultCode, resultMsg);
             return res.status(200).json({ error: { code: resultCode, message: resultMsg } });
@@ -60,7 +64,7 @@ module.exports = async function handler(req, res) {
 
         // 필요한 데이터 추출
         const data = {
-            location: parseXmlValue(text, 'location') || location,
+            location: parseXmlValue(text, 'location') || location || '서울',
             locdate: parseXmlValue(text, 'locdate') || locdate,
             sunrise: parseXmlValue(text, 'sunrise'),      // 일출
             sunset: parseXmlValue(text, 'sunset'),        // 일몰
@@ -73,6 +77,8 @@ module.exports = async function handler(req, res) {
             astm: parseXmlValue(text, 'astm'),            // 천문박명(아침)
             aste: parseXmlValue(text, 'aste')             // 천문박명(저녁)
         };
+        
+        console.log('[SunRiseSet] Parsed data:', data);
 
         res.status(200).json({ response: { body: { items: { item: data } } } });
 

@@ -2944,7 +2944,7 @@
                 `;
             }
 
-            // 미세먼지 정보 HTML (기준치 범례 포함)
+            // 미세먼지 정보 HTML (info 아이콘 + 팝업)
             let airHtml = '';
             if (this.airQuality) {
                 const pm10 = this.airQuality.pm10 || '-';
@@ -2956,23 +2956,47 @@
                 
                 airHtml = `
                     <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                        <div class="flex items-center justify-around mb-2">
+                        <div class="flex items-center justify-center gap-1 mb-2">
+                            <span class="text-xs text-slate-400">대기질</span>
+                            <button id="air-info-btn" class="text-slate-400 hover:text-primary transition-colors" title="기준 보기">
+                                <span class="material-symbols-outlined text-sm">info</span>
+                            </button>
+                        </div>
+                        <div class="flex items-center justify-around">
                             <div class="text-center">
-                                <p class="text-[10px] text-slate-400 mb-1">미세먼지 (PM10)</p>
+                                <p class="text-[10px] text-slate-400 mb-1">미세먼지</p>
                                 <span class="inline-block px-2 py-0.5 rounded-full text-xs font-bold ${pm10Class}">${pm10Text}</span>
                                 <p class="text-[10px] text-slate-500 mt-1">${pm10}㎍/㎥</p>
                             </div>
                             <div class="text-center">
-                                <p class="text-[10px] text-slate-400 mb-1">초미세먼지 (PM2.5)</p>
+                                <p class="text-[10px] text-slate-400 mb-1">초미세먼지</p>
                                 <span class="inline-block px-2 py-0.5 rounded-full text-xs font-bold ${pm25Class}">${pm25Text}</span>
                                 <p class="text-[10px] text-slate-500 mt-1">${pm25}㎍/㎥</p>
                             </div>
                         </div>
-                        <div class="flex justify-center gap-2 text-[9px] text-slate-400">
-                            <span class="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30">좋음 0~30</span>
-                            <span class="px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30">보통 31~80</span>
-                            <span class="px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30">나쁨 81~150</span>
-                            <span class="px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30">매우나쁨 151~</span>
+                        <!-- 기준 설명 팝업 (숨김) -->
+                        <div id="air-info-popup" class="hidden mt-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg text-xs">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-bold text-slate-600 dark:text-slate-300">대기질 기준 (㎍/㎥)</span>
+                                <button id="air-info-close" class="text-slate-400 hover:text-slate-600">
+                                    <span class="material-symbols-outlined text-sm">close</span>
+                                </button>
+                            </div>
+                            <table class="w-full text-center">
+                                <thead>
+                                    <tr class="text-slate-400">
+                                        <th class="py-1">등급</th>
+                                        <th class="py-1">미세먼지</th>
+                                        <th class="py-1">초미세먼지</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-slate-600 dark:text-slate-300">
+                                    <tr><td class="py-1"><span class="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-600">좋음</span></td><td>0~30</td><td>0~15</td></tr>
+                                    <tr><td class="py-1"><span class="px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-600">보통</span></td><td>31~80</td><td>16~35</td></tr>
+                                    <tr><td class="py-1"><span class="px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-600">나쁨</span></td><td>81~150</td><td>36~75</td></tr>
+                                    <tr><td class="py-1"><span class="px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-600">매우나쁨</span></td><td>151~</td><td>76~</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 `;
@@ -3044,6 +3068,21 @@
                 ${dailyHtml}
             `;
 
+            // 대기질 info 버튼 이벤트
+            const airInfoBtn = document.getElementById('air-info-btn');
+            const airInfoPopup = document.getElementById('air-info-popup');
+            const airInfoClose = document.getElementById('air-info-close');
+            
+            if (airInfoBtn && airInfoPopup) {
+                airInfoBtn.addEventListener('click', () => {
+                    airInfoPopup.classList.toggle('hidden');
+                });
+            }
+            if (airInfoClose && airInfoPopup) {
+                airInfoClose.addEventListener('click', () => {
+                    airInfoPopup.classList.add('hidden');
+                });
+            }
         },
 
         showError(message) {
