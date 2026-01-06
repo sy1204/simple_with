@@ -1395,7 +1395,7 @@
 
     // ===== 사전 (Dictionary) =====
     const Dictionary = {
-        currentTab: Storage.get('dictTab', 'korean'), // 'korean', 'english', 'translate'
+        currentTab: Storage.get('dictTab', 'korean'), // 'korean', 'english', 'etymology'
         isLoading: false,
         lastQuery: '',
         searchHistory: Storage.get('dictHistory', []),
@@ -1411,7 +1411,7 @@
 
         bindEvents() {
             // 탭 버튼들
-            ['korean', 'english', 'translate'].forEach(tab => {
+            ['korean', 'english', 'etymology'].forEach(tab => {
                 const btn = document.getElementById(`dict-tab-${tab}`);
                 if (btn) {
                     btn.addEventListener('click', () => {
@@ -1464,7 +1464,7 @@
         },
 
         updateTabButtons() {
-            ['korean', 'english', 'translate'].forEach(tab => {
+            ['korean', 'english', 'etymology'].forEach(tab => {
                 const btn = document.getElementById(`dict-tab-${tab}`);
                 if (btn) {
                     btn.className = this.currentTab === tab
@@ -1478,9 +1478,9 @@
             const input = document.getElementById('dict-search-input');
             if (!input) return;
             const placeholders = {
-                korean: '국어 단어를 검색하세요...',
-                english: '영어 단어를 검색하세요 (예: hello, computer)...',
-                translate: '번역할 문장을 입력하세요 (한↔영 자동 감지)...'
+                korean: '국어 단어를 검색하세요 (예: 사랑, 행복)...',
+                english: '영어 또는 한글 단어를 입력하세요 (자동 전환)...',
+                etymology: '영어 단어의 어원을 검색하세요 (예: love, computer)...'
             };
             input.placeholder = placeholders[this.currentTab];
         },
@@ -1493,7 +1493,7 @@
             const footers = {
                 korean: { text: '출처: 국립국어원 표준국어대사전', url: 'https://stdict.korean.go.kr', label: '사전 사이트 방문' },
                 english: { text: '출처: Free Dictionary API + 파파고', url: 'https://dictionaryapi.dev', label: 'API 정보' },
-                translate: { text: '출처: 네이버 파파고', url: 'https://papago.naver.com', label: '파파고 방문' }
+                etymology: { text: '출처: Online Etymology Dictionary', url: 'https://www.etymonline.com', label: 'Etymonline 방문' }
             };
             const f = footers[this.currentTab];
             source.textContent = f.text;
@@ -1505,9 +1505,9 @@
             const container = document.getElementById('dict-results');
             if (!container) return;
             const msgs = {
-                korean: '국어 단어를 검색해보세요',
-                english: '영어 단어를 검색하면 뜻과 발음을 확인할 수 있습니다',
-                translate: '한국어 또는 영어 문장을 입력하면 자동으로 번역됩니다'
+                korean: '국어 단어를 검색해보세요 (조사, 합성어도 검색 가능)',
+                english: '영어 입력 시 영한사전, 한글 입력 시 한영사전으로 자동 전환됩니다',
+                etymology: '영어 단어의 어원과 역사를 알아보세요'
             };
             container.innerHTML = `
                 <div class="flex flex-col items-center justify-center h-full text-slate-400">
@@ -1551,8 +1551,8 @@
                     data = await this.fetchEnglish(query);
                     this.renderEnglishResults(data, query);
                 } else {
-                    data = await this.fetchTranslate(query);
-                    this.renderTranslateResults(data, query);
+                    // etymology - iframe 표시
+                    this.renderEtymologyResults(query);
                 }
                 this.updateNavButtons();
             } catch (error) {
@@ -1579,11 +1579,6 @@
 
         async fetchEnglish(query) {
             const res = await fetch(`/api/english?q=${encodeURIComponent(query)}`);
-            return res.json();
-        },
-
-        async fetchTranslate(query) {
-            const res = await fetch(`/api/translate?text=${encodeURIComponent(query)}&source=auto&target=auto`);
             return res.json();
         },
 
@@ -1636,6 +1631,11 @@
                 return;
             }
 
+            const isKoToEn = data.direction === 'ko→en';
+            const directionBadge = isKoToEn 
+                ? '<span class="px-2 py-0.5 text-[10px] font-bold bg-green-100 dark:bg-green-900/30 text-green-600 rounded">한→영</span>'
+                : '<span class="px-2 py-0.5 text-[10px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded">영→한</span>';
+
             let html = `<div class="space-y-4">`;
             
             // 단어 헤더
@@ -1646,8 +1646,10 @@
                         ${data.phonetic ? `<span class="text-sm text-slate-500">${this.escapeHtml(data.phonetic)}</span>` : ''}
                         ${data.audio ? `<button onclick="new Audio('${data.audio}').play()" class="p-1 text-primary hover:bg-primary/10 rounded-full"><span class="material-symbols-outlined text-lg">volume_up</span></button>` : ''}
                     </div>
+                    ${directionBadge}
                 </div>
-                ${data.koreanMeaning ? `<div class="text-lg text-primary font-medium">${this.escapeHtml(data.koreanMeaning)}</div>` : ''}
+                ${isKoToEn && data.englishMeaning ? `<div class="text-lg text-primary font-medium">${this.escapeHtml(data.englishMeaning)}</div>` : ''}
+                ${!isKoToEn && data.koreanMeaning ? `<div class="text-lg text-primary font-medium">${this.escapeHtml(data.koreanMeaning)}</div>` : ''}
             </div>`;
 
             // 의미들
@@ -1670,40 +1672,27 @@
             container.innerHTML = html + '</div>';
         },
 
-        renderTranslateResults(data, query) {
+        renderEtymologyResults(query) {
             const container = document.getElementById('dict-results');
             if (!container) return;
 
-            if (data.error) {
-                this.showMessage(data.error.message, 'error');
-                return;
-            }
-
-            const langNames = { ko: '한국어', en: '영어', ja: '일본어', zh: '중국어' };
-            const sourceLang = langNames[data.source] || data.source;
-            const targetLang = langNames[data.target] || data.target;
+            // etymonline.com 검색 URL
+            const searchUrl = `https://www.etymonline.com/search?q=${encodeURIComponent(query)}`;
 
             container.innerHTML = `
-                <div class="space-y-4">
-                    <div class="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="text-xs font-medium text-slate-500">${sourceLang}</span>
-                        </div>
-                        <p class="text-slate-700 dark:text-slate-200">${this.escapeHtml(data.text)}</p>
+                <div class="h-full flex flex-col">
+                    <div class="mb-2 flex items-center justify-between">
+                        <span class="text-xs text-slate-500">검색어: <strong class="text-primary">${this.escapeHtml(query)}</strong></span>
+                        <a href="${searchUrl}" target="_blank" class="text-xs text-primary hover:underline flex items-center gap-1">
+                            <span class="material-symbols-outlined text-sm">open_in_new</span>새 탭에서 열기
+                        </a>
                     </div>
-                    <div class="flex justify-center">
-                        <span class="material-symbols-outlined text-2xl text-primary">arrow_downward</span>
-                    </div>
-                    <div class="bg-primary/5 dark:bg-primary/10 rounded-lg p-4 border-2 border-primary/20">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="text-xs font-medium text-primary">${targetLang}</span>
-                        </div>
-                        <p class="text-lg font-medium text-slate-800 dark:text-white">${this.escapeHtml(data.translatedText)}</p>
-                    </div>
-                    <button onclick="navigator.clipboard.writeText('${this.escapeHtml(data.translatedText).replace(/'/g, "\\'")}'); this.textContent='복사됨!'; setTimeout(() => this.innerHTML='<span class=\\'material-symbols-outlined text-sm\\'>content_copy</span> 번역 복사', 2000);"
-                        class="w-full py-2 text-sm font-medium text-slate-600 hover:text-primary bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center gap-1 transition-colors">
-                        <span class="material-symbols-outlined text-sm">content_copy</span> 번역 복사
-                    </button>
+                    <iframe 
+                        src="${searchUrl}" 
+                        class="flex-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white"
+                        style="min-height: 400px;"
+                        sandbox="allow-scripts allow-same-origin allow-popups"
+                    ></iframe>
                 </div>`;
         },
 

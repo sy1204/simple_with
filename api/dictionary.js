@@ -41,7 +41,8 @@ module.exports = async function handler(req, res) {
             q: q,
             req_type: 'json',
             num: '10',
-            advanced: 'n'
+            advanced: 'y',
+            method: 'include'  // 포함 검색으로 유연하게 검색
         });
         const apiUrl = `https://stdict.korean.go.kr/api/search.do?${params.toString()}`;
 
