@@ -3253,16 +3253,19 @@
             this.editMode = !this.editMode;
             const btn = document.getElementById('edit-mode-toggle');
             const container = document.getElementById('main-content');
+            const grid = document.querySelector('.grid');
 
             if (this.editMode) {
                 btn.classList.add('bg-primary', 'text-white');
                 btn.classList.remove('text-slate-600', 'dark:text-slate-400');
                 container.classList.add('edit-mode');
+                if (grid) grid.classList.add('edit-mode');
                 this.showEditUI();
             } else {
                 btn.classList.remove('bg-primary', 'text-white');
                 btn.classList.add('text-slate-600', 'dark:text-slate-400');
                 container.classList.remove('edit-mode');
+                if (grid) grid.classList.remove('edit-mode');
                 this.hideEditUI();
                 this.saveLayout();
             }
@@ -3459,6 +3462,10 @@
             const clientX = e.clientX || (e.touches && e.touches[0].clientX);
             const clientY = e.clientY || (e.touches && e.touches[0].clientY);
 
+            // 마지막 드래그 위치 저장
+            this.lastDragX = clientX;
+            this.lastDragY = clientY;
+
             // 드래그된 요소를 마우스 위치로 이동
             const rect = this.draggedElement.getBoundingClientRect();
             this.draggedElement.style.left = `${clientX - rect.width / 2}px`;
@@ -3515,6 +3522,13 @@
                 this.placeholder.parentNode.insertBefore(this.draggedElement, this.placeholder);
             }
 
+            // 그리드 좌표 계산 및 적용 (마지막 드래그 위치 사용)
+            if (this.lastDragX !== undefined && this.lastDragY !== undefined) {
+                const coords = this.getGridCoordinates(this.lastDragX, this.lastDragY);
+                this.draggedElement.style.gridColumnStart = coords.column.toString();
+                this.draggedElement.style.gridRowStart = coords.row.toString();
+            }
+
             // 스타일 복원
             this.draggedElement.classList.remove('dragging');
             this.draggedElement.style.position = '';
@@ -3527,6 +3541,8 @@
 
             this.removePlaceholder();
             this.draggedElement = null;
+            this.lastDragX = undefined;
+            this.lastDragY = undefined;
 
             this.saveLayout();
         },
@@ -3538,6 +3554,44 @@
             }
 
             this.handleDragEnd(e);
+        },
+
+        // 마우스 위치를 그리드 좌표로 변환
+        getGridCoordinates(clientX, clientY) {
+            const container = document.querySelector('.grid');
+            const rect = container.getBoundingClientRect();
+
+            // 그리드 설정 가져오기
+            const computedStyle = window.getComputedStyle(container);
+            const gap = parseInt(computedStyle.gap) || 0;
+
+            // 뷰포트 크기에 따라 컬럼 수 결정
+            const viewportWidth = window.innerWidth;
+            let columns;
+            if (viewportWidth >= 1024) {
+                columns = 4; // lg 이상
+            } else if (viewportWidth >= 768) {
+                columns = 2; // md
+            } else {
+                columns = 1; // 모바일
+            }
+
+            // 컨테이너 내 상대 위치
+            const relativeX = clientX - rect.left;
+            const relativeY = clientY - rect.top;
+
+            // 각 셀의 크기 계산 (gap 포함)
+            const cellWidth = (rect.width - gap * (columns - 1)) / columns;
+            const cellHeight = 200; // 기본 row 높이
+
+            // 그리드 좌표 계산
+            const column = Math.floor(relativeX / (cellWidth + gap)) + 1;
+            const row = Math.floor(relativeY / (cellHeight + gap)) + 1;
+
+            return {
+                column: Math.max(1, Math.min(column, columns)),
+                row: Math.max(1, row)
+            };
         },
 
         getDragAfterElement(x, y) {
@@ -3574,10 +3628,15 @@
             const layout = [];
 
             cards.forEach(card => {
+                const gridColumnStart = card.style.gridColumnStart || 'auto';
+                const gridRowStart = card.style.gridRowStart || 'auto';
+
                 layout.push({
                     id: card.id,
                     colSpan: this.getWidgetColSpan(card),
                     rowSpan: this.getWidgetRowSpan(card),
+                    gridColumnStart: gridColumnStart,
+                    gridRowStart: gridRowStart,
                     order: Array.from(cards).indexOf(card)
                 });
             });
@@ -3594,11 +3653,20 @@
                 const container = document.querySelector('.grid');
                 if (!container) return;
 
-                // 순서대로 재배치
+                // 순서대로 재배치 및 그리드 위치 적용
                 layout.sort((a, b) => a.order - b.order).forEach(item => {
                     const card = document.getElementById(item.id);
                     if (card) {
                         this.updateWidgetSize(card, item.colSpan, item.rowSpan);
+
+                        // 그리드 좌표 적용
+                        if (item.gridColumnStart && item.gridColumnStart !== 'auto') {
+                            card.style.gridColumnStart = item.gridColumnStart;
+                        }
+                        if (item.gridRowStart && item.gridRowStart !== 'auto') {
+                            card.style.gridRowStart = item.gridRowStart;
+                        }
+
                         container.appendChild(card);
                     }
                 });

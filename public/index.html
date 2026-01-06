@@ -247,38 +247,23 @@
             background: rgba(59, 130, 246, 1) !important;
         }
 
-        /* 위젯 내부 텍스트 반응형 조정 */
+        /* 위젯 내부 텍스트 처리 */
         .card {
             overflow: hidden;
             word-wrap: break-word;
             overflow-wrap: break-word;
-            word-break: break-word;
         }
 
-        .card * {
-            overflow-wrap: break-word;
-            word-break: break-word;
+        /* 그리드 수동 배치 모드 - 빈 공간 허용 */
+        .grid {
+            grid-auto-flow: dense;
         }
 
-        .card h3 {
-            font-size: clamp(0.875rem, 2vw, 1.125rem);
-        }
-
-        .card p, .card span, .card div {
-            font-size: clamp(0.75rem, 1.5vw, 0.875rem);
-        }
-
-        /* 작은 위젯에서 텍스트 크기 축소 */
-        .col-span-1 h3 {
-            font-size: clamp(0.75rem, 2vw, 0.875rem) !important;
-        }
-
-        .col-span-1 .text-lg {
-            font-size: 0.875rem !important;
-        }
-
-        .col-span-1 .text-base {
-            font-size: 0.75rem !important;
+        /* 편집 모드에서 그리드 가시화 */
+        .grid.edit-mode {
+            background-image:
+                repeating-linear-gradient(0deg, transparent, transparent calc(100% - 1px), rgba(59, 130, 246, 0.1) calc(100% - 1px), rgba(59, 130, 246, 0.1) 100%),
+                repeating-linear-gradient(90deg, transparent, transparent calc(100% - 1px), rgba(59, 130, 246, 0.1) calc(100% - 1px), rgba(59, 130, 246, 0.1) 100%);
         }
     </style>
 </head>
