@@ -490,12 +490,12 @@
             calendarArea.addEventListener('touchend', (e) => {
                 if (!isSwiping) return;
                 isSwiping = false;
-                
+
                 const touchEndX = e.changedTouches[0].screenX;
                 const touchEndY = e.changedTouches[0].screenY;
                 const deltaX = touchStartX - touchEndX;
                 const deltaY = Math.abs(touchStartY - touchEndY);
-                
+
                 // 수평 스와이프가 충분히 크고, 수직 이동보다 클 때만 동작
                 if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > deltaY) {
                     if (deltaX > 0) {
@@ -961,15 +961,15 @@
                     <!-- 체크박스 (Google Keep 스타일) -->
                     <button onclick="event.stopPropagation(); window.Todo.toggle(${item.id})" 
                             class="flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all
-                                   ${item.done 
-                                       ? 'bg-primary border-primary' 
-                                       : 'border-slate-300 dark:border-slate-600 hover:border-primary'}">
+                                   ${item.done
+                        ? 'bg-primary border-primary'
+                        : 'border-slate-300 dark:border-slate-600 hover:border-primary'}">
                         ${item.done ? '<span class="material-symbols-outlined text-white text-sm">check</span>' : ''}
                     </button>
                     
                     <!-- 텍스트 -->
-                    <span class="flex-1 text-sm ${item.done 
-                        ? 'text-slate-400 line-through decoration-slate-400' 
+                    <span class="flex-1 text-sm ${item.done
+                        ? 'text-slate-400 line-through decoration-slate-400'
                         : 'text-slate-700 dark:text-slate-200'} cursor-text select-text">${item.text}</span>
                     
                     <!-- 드래그 & 삭제 (hover 시 표시) -->
@@ -987,7 +987,7 @@
             };
 
             let html = activeItems.map(renderItem).join('');
-            
+
             // 완료된 항목이 있으면 구분선과 함께 표시
             if (doneItems.length > 0) {
                 html += `
@@ -1307,22 +1307,22 @@
             const p = parseFloat(document.getElementById('fin-principal').value.replace(/,/g, ''));
             const inputRate = parseFloat(document.getElementById('fin-rate').value) / 100;
             const period = parseFloat(document.getElementById('fin-period').value);
-            
+
             // 연이율로 환산 (월이율 입력 시 × 12)
             const annualRate = this.rateUnit === 'year' ? inputRate : inputRate * 12;
             // 기간을 년 단위로 환산
             const years = this.periodUnit === 'year' ? period : period / 12;
-            
+
             const interest = Math.round(p * annualRate * years);
             const total = p + interest;
-            
+
             document.getElementById('fin-interest').textContent = '+' + interest.toLocaleString() + '원';
             document.getElementById('fin-total').textContent = total.toLocaleString() + '원';
-            
+
             // 정보 표시
             const resultInfo = document.getElementById('fin-result-info');
             const yearlyInfo = document.getElementById('fin-yearly-info');
-            
+
             // 이율 & 기간 정보 조합
             let infoText = '';
             if (this.rateUnit === 'month') {
@@ -1334,7 +1334,7 @@
                 infoText += (infoText ? ' · ' : '') + `${period}년`;
             }
             resultInfo.textContent = infoText;
-            
+
             // 1년 기준 이자 표시 (기간이 1년이 아닐 때)
             if (years !== 1) {
                 const yearlyInterest = Math.round(p * annualRate);
@@ -1401,7 +1401,7 @@
                 infoEl.classList.remove('hidden');
             }
         },
-        
+
         async refreshExchangeRates() {
             const refreshBtn = document.getElementById('exchange-refresh');
             if (refreshBtn) {
@@ -1475,13 +1475,13 @@
             input.focus(); // 탭 전환 시 입력창 포커스 (편의성)
 
             document.getElementById('conv-swap').addEventListener('click', () => this.swap());
-            
+
             // 환율 새로고침 버튼
             const refreshBtn = document.getElementById('exchange-refresh');
             if (refreshBtn) {
                 refreshBtn.addEventListener('click', () => this.refreshExchangeRates());
             }
-            
+
             this.convert();
         },
         convert() {
@@ -1844,12 +1844,12 @@
             }
 
             const isKoToEn = data.direction === 'ko→en';
-            const directionBadge = isKoToEn 
+            const directionBadge = isKoToEn
                 ? '<span class="px-2 py-0.5 text-[10px] font-bold bg-green-100 dark:bg-green-900/30 text-green-600 rounded">한→영</span>'
                 : '<span class="px-2 py-0.5 text-[10px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded">영→한</span>';
 
             let html = `<div class="space-y-4">`;
-            
+
             // 단어 헤더
             html += `<div class="bg-white dark:bg-card-dark rounded-lg p-4 border border-slate-100 dark:border-slate-700">
                 <div class="flex items-center justify-between mb-3">
@@ -1860,7 +1860,7 @@
                     </div>
                     ${directionBadge}
                 </div>`;
-            
+
             // 한글/영어 뜻 (메인으로 크게 표시)
             if (isKoToEn && data.englishMeaning) {
                 html += `<div class="text-xl text-primary font-bold border-l-4 border-primary pl-3">${this.escapeHtml(data.englishMeaning)}</div>`;
@@ -2233,10 +2233,9 @@
             if (!container) return;
 
             container.innerHTML = this.favorites.map((fav, idx) => `
-                <button class="weather-fav-btn px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                    idx === this.currentIdx 
-                        ? 'bg-primary text-white' 
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-primary/20'
+                <button class="weather-fav-btn px-3 py-1 text-xs font-medium rounded-full transition-colors ${idx === this.currentIdx
+                    ? 'bg-primary text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-primary/20'
                 }" data-idx="${idx}">
                     ${this.getShortName(fav.name)}
                 </button>
@@ -2274,7 +2273,7 @@
             }
 
             const q = query.toLowerCase();
-            const matches = this.locations.filter(loc => 
+            const matches = this.locations.filter(loc =>
                 loc.name.toLowerCase().includes(q)
             ).slice(0, 10);
 
@@ -2422,10 +2421,10 @@
 
                 this.data = this.parseCurrentWeather(currentData);
                 this.forecast = forecastData.error ? { hourly: [], daily: [] } : this.parseForecast(forecastData);
-                
+
                 // 현재 데이터를 과거 기록에 저장
                 this.saveToHistory(this.data, loc.name);
-                
+
                 // 중기예보 파싱
                 if (midData.error) {
                     console.error('[Weather] Mid forecast error:', midData.error.message);
@@ -2436,7 +2435,7 @@
 
                 // 미세먼지 파싱
                 this.airQuality = this.parseAirQuality(airData);
-                
+
                 // 일출/일몰 계산 (서울 기준, 대한민국 평균)
                 this.sunRiseSet = this.calcSunRiseSet();
 
@@ -2450,7 +2449,7 @@
                     sunRiseSet: this.sunRiseSet ? 'OK' : 'N/A',
                     livingIndex: this.livingIndex ? 'OK' : 'N/A'
                 });
-                
+
                 this.render();
             } catch (error) {
                 console.error('[Weather] Load error:', error);
@@ -2462,25 +2461,25 @@
         calcSunRiseSet() {
             const now = new Date();
             const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
-            
+
             // 서울 기준 (위도 37.5도) 간단한 일출/일몰 계산
             // 연중 변화: 일출 5:10~7:45, 일몰 17:15~19:55 (대략)
             const lat = 37.5;
-            
+
             // 간단한 계산 공식 (정확도 ±5분)
             const declination = -23.45 * Math.cos((360 / 365) * (dayOfYear + 10) * Math.PI / 180);
             const hourAngle = Math.acos(-Math.tan(lat * Math.PI / 180) * Math.tan(declination * Math.PI / 180)) * 180 / Math.PI;
-            
+
             const solarNoon = 12 + (127 - 126.98) * 4 / 60; // 서울 경도 보정
             const sunriseHour = solarNoon - hourAngle / 15;
             const sunsetHour = solarNoon + hourAngle / 15;
-            
+
             const formatTime = (h) => {
                 const hours = Math.floor(h);
                 const mins = Math.round((h - hours) * 60);
                 return `${String(hours).padStart(2, '0')}${String(mins).padStart(2, '0')}`;
             };
-            
+
             return {
                 sunrise: formatTime(sunriseHour),
                 sunset: formatTime(sunsetHour),
@@ -2491,7 +2490,7 @@
         // 생활기상지수 로드 (자외선 지수)
         async loadLivingIndex(areaNo, time) {
             const indices = {};
-            
+
             // time 형식: YYYYMMDDHH → 06시 또는 18시로 맞춤
             const baseTime = time.slice(0, 8) + '06';
             console.log('[Weather] Living index request - areaNo:', areaNo, 'time:', baseTime);
@@ -2501,7 +2500,7 @@
                 const uvRes = await fetch(`/api/livingindex?type=UV&areaNo=${areaNo}&time=${baseTime}`);
                 const uvData = await uvRes.json();
                 console.log('[Weather] UV response:', JSON.stringify(uvData).substring(0, 500));
-                
+
                 if (!uvData.error && uvData.response?.body?.items?.item) {
                     const items = uvData.response.body.items.item;
                     const item = Array.isArray(items) ? items[0] : items;
@@ -2533,12 +2532,12 @@
             const now = new Date();
             const key = 'weatherHistory_' + location.replace(/\s/g, '_');
             const history = JSON.parse(sessionStorage.getItem(key) || '[]');
-            
+
             // 현재 시간 (시 단위로 반올림)
             const hour = now.getHours();
             const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
             const timeKey = `${dateStr}${String(hour).padStart(2, '0')}`;
-            
+
             // 이미 같은 시간 데이터가 있으면 업데이트
             const existingIdx = history.findIndex(h => h.timeKey === timeKey);
             const record = {
@@ -2550,20 +2549,20 @@
                 pty: data.PTY,
                 timestamp: now.getTime()
             };
-            
+
             if (existingIdx >= 0) {
                 history[existingIdx] = record;
             } else {
                 history.push(record);
             }
-            
+
             // 24시간 이전 데이터 삭제
             const cutoff = now.getTime() - 24 * 60 * 60 * 1000;
             const filtered = history.filter(h => h.timestamp > cutoff);
-            
+
             // 시간순 정렬
             filtered.sort((a, b) => a.timeKey.localeCompare(b.timeKey));
-            
+
             sessionStorage.setItem(key, JSON.stringify(filtered));
             console.log('[Weather] History saved:', filtered.length, 'records');
         },
@@ -2582,7 +2581,7 @@
                 console.log('[Weather] AirQuality: No items found');
                 return null;
             }
-            
+
             const item = items[0];
             console.log('[Weather] AirQuality item:', item);
             return {
@@ -2606,11 +2605,11 @@
 
         // 미세먼지 등급 색상 클래스
         getAirGradeClass(grade) {
-            const classes = { 
-                '1': 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400', 
-                '2': 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400', 
-                '3': 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400', 
-                '4': 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' 
+            const classes = {
+                '1': 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+                '2': 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
+                '3': 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
+                '4': 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
             };
             return classes[grade] || 'bg-slate-100 text-slate-500';
         },
@@ -2713,7 +2712,7 @@
                 byTime[key][item.category] = item.fcstValue;
             });
 
-            const forecasts = Object.values(byTime).sort((a, b) => 
+            const forecasts = Object.values(byTime).sort((a, b) =>
                 `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)
             );
 
@@ -2723,10 +2722,10 @@
             const currentHour = kstNow.getUTCHours();
             const today = kstNow.toISOString().slice(0, 10).replace(/-/g, '');
             console.log('[Weather] Today:', today, 'Current hour:', currentHour);
-            
+
             // 현재 시간부터 48시간까지 시간대별 예보
             const nowStr = `${today}${String(currentHour).padStart(2, '0')}00`;
-            
+
             // 48시간 후 계산
             const futureTime = new Date(kstNow.getTime() + 48 * 60 * 60 * 1000);
             const futureDate = futureTime.toISOString().slice(0, 10).replace(/-/g, '');
@@ -2781,7 +2780,7 @@
                 const wc = 13.12 + 0.6215 * t - 11.37 * Math.pow(w, 0.16) + 0.3965 * t * Math.pow(w, 0.16);
                 return Math.round(wc * 10) / 10;
             }
-            
+
             // 더운 날씨: Heat Index (27°C 이상)
             if (t >= 27 && !isNaN(h)) {
                 const hi = -8.78469475556 + 1.61139411 * t + 2.33854883889 * h
@@ -2823,11 +2822,11 @@
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const diff = Math.floor((date - today) / (1000 * 60 * 60 * 24));
-            
+
             if (diff === 0) return '오늘';
             if (diff === 1) return '내일';
             if (diff === 2) return '모레';
-            
+
             const days = ['일', '월', '화', '수', '목', '금', '토'];
             return days[date.getDay()] + '요일';
         },
@@ -2835,11 +2834,11 @@
         getDayNameByOffset(offset) {
             const date = new Date();
             date.setDate(date.getDate() + offset);
-            
+
             if (offset === 0) return '오늘';
             if (offset === 1) return '내일';
             if (offset === 2) return '모레';
-            
+
             const days = ['일', '월', '화', '수', '목', '금', '토'];
             return days[date.getDay()] + '요일';
         },
@@ -2866,7 +2865,7 @@
             const result = [];
             const now = new Date();
             const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-            
+
             // 오늘 날짜 (KST)
             const todayKST = new Date(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate());
 
@@ -2874,14 +2873,14 @@
             for (let i = 2; i <= 10; i++) {
                 const targetDate = new Date(todayKST);
                 targetDate.setDate(targetDate.getDate() + i);
-                
+
                 const year = targetDate.getFullYear();
                 const month = String(targetDate.getMonth() + 1).padStart(2, '0');
                 const day = String(targetDate.getDate()).padStart(2, '0');
                 const dateStr = `${year}${month}${day}`;
-                
+
                 let found = false;
-                
+
                 // 1. 단기예보에서 먼저 찾기 (보통 오늘~모레까지 제공)
                 if (this.forecast?.daily?.length) {
                     const shortDay = this.forecast.daily.find(d => d.date === dateStr);
@@ -2897,7 +2896,7 @@
                         found = true;
                     }
                 }
-                
+
                 // 2. 단기예보에 없으면 중기예보에서 찾기 (+3일~+10일)
                 if (!found && this.midForecast?.length) {
                     // 중기예보는 dayOffset(3~10)으로 직접 매핑되어 있음
@@ -2934,11 +2933,11 @@
             const icon = this.getWeatherIcon(pty, '1');
             const condition = this.getWeatherName(pty, '1');
             const feelsLike = this.calcFeelsLike(temp, wind, humidity);
-            
-            console.log('[Weather] Render data:', { 
-                airQuality: this.airQuality, 
-                sunRiseSet: this.sunRiseSet, 
-                livingIndex: this.livingIndex 
+
+            console.log('[Weather] Render data:', {
+                airQuality: this.airQuality,
+                sunRiseSet: this.sunRiseSet,
+                livingIndex: this.livingIndex
             });
 
             // 시간대별 예보 HTML (과거 + 미래)
@@ -2946,10 +2945,10 @@
             const history = this.getHistory(loc.name);
             const hasHistory = history.length > 0;
             const hasForecast = this.forecast?.hourly?.length > 0;
-            
+
             if (hasHistory || hasForecast) {
                 let lastDate = '';
-                
+
                 // 과거 데이터 HTML
                 const historyHtml = history.map(h => {
                     const showDate = h.date !== lastDate;
@@ -2965,7 +2964,7 @@
                         </div>
                     `;
                 }).join('');
-                
+
                 // 미래 예보 HTML
                 const forecastHtml = (this.forecast?.hourly || []).map(h => {
                     const hour = h.time.slice(0, 2);
@@ -2983,7 +2982,7 @@
                         </div>
                     `;
                 }).join('');
-                
+
                 hourlyHtml = `
                     <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                         <p class="text-xs font-medium text-slate-500 mb-3">⏰ 시간대별 ${hasHistory ? '<span class="text-amber-500">(과거)</span> + ' : ''}예보</p>
@@ -3005,8 +3004,8 @@
                         <p class="text-xs font-medium text-slate-500 mb-3">📅 주간 예보</p>
                         <div class="space-y-2">
                             ${combinedDaily.slice(0, 7).map(d => {
-                                const dIcon = this.getMidWeatherIcon(d.sky);
-                                return `
+                    const dIcon = this.getMidWeatherIcon(d.sky);
+                    return `
                                     <div class="flex items-center justify-between py-1">
                                         <span class="text-sm font-medium w-14">${d.dayName}</span>
                                         <span class="material-symbols-outlined text-lg text-primary">${dIcon}</span>
@@ -3018,7 +3017,7 @@
                                         </div>
                                     </div>
                                 `;
-                            }).join('')}
+                }).join('')}
                         </div>
                     </div>
                 `;
@@ -3033,7 +3032,7 @@
                 const pm25Class = this.getAirGradeClass(this.airQuality.pm25Grade);
                 const pm10Text = this.getAirGradeText(this.airQuality.pm10Grade);
                 const pm25Text = this.getAirGradeText(this.airQuality.pm25Grade);
-                
+
                 airHtml = `
                     <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                         <div class="flex items-center justify-center gap-1 mb-2">
@@ -3085,13 +3084,13 @@
             // 일출/일몰 + 자외선 HTML
             let lifeHtml = '';
             const lifeItems = [];
-            
+
             // 자외선 지수
             if (this.livingIndex?.UV) {
                 const uvInfo = this.getUVInfo(this.livingIndex.UV);
                 lifeItems.push(`<span class="text-xs ${uvInfo.class} font-medium">☀️ 자외선 ${uvInfo.text}</span>`);
             }
-            
+
             // 일출/일몰
             if (this.sunRiseSet?.sunrise && this.sunRiseSet?.sunset) {
                 const sunrise = this.sunRiseSet.sunrise.slice(0, 2) + ':' + this.sunRiseSet.sunrise.slice(2, 4);
@@ -3099,7 +3098,7 @@
                 lifeItems.push(`<span class="text-xs text-slate-500">일출 ${sunrise}</span>`);
                 lifeItems.push(`<span class="text-xs text-slate-500">일몰 ${sunset}</span>`);
             }
-            
+
             if (lifeItems.length > 0) {
                 lifeHtml = `
                     <div class="mt-2 flex justify-center gap-4">
@@ -3147,7 +3146,7 @@
             const airInfoBtn = document.getElementById('air-info-btn');
             const airInfoPopup = document.getElementById('air-info-popup');
             const airInfoClose = document.getElementById('air-info-close');
-            
+
             if (airInfoBtn && airInfoPopup) {
                 airInfoBtn.addEventListener('click', () => {
                     airInfoPopup.classList.toggle('hidden');
@@ -3174,7 +3173,7 @@
     const Navigation = {
         init() {
             const mainContent = document.getElementById('main-content');
-            
+
             // 페이지 로드 시 맨 위로 스크롤
             if (mainContent) {
                 mainContent.scrollTop = 0;
@@ -3192,7 +3191,7 @@
                         window.scrollTo(0, 0);
                         return;
                     }
-                    
+
                     e.preventDefault();
                     this.scrollToWidget(targetId);
                 });
@@ -3205,7 +3204,7 @@
 
             // 가장 간단하고 확실한 방법: scrollIntoView
             targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            
+
             // 하이라이트 효과
             this.highlightWidget(targetEl);
         },
@@ -3215,7 +3214,7 @@
             document.querySelectorAll('.widget-highlight').forEach(w => {
                 w.classList.remove('widget-highlight');
             });
-            
+
             // 새 하이라이트 추가
             setTimeout(() => {
                 el.classList.add('widget-highlight');
@@ -3235,6 +3234,10 @@
         touchStartX: 0,
         touchStartY: 0,
         LONG_PRESS_DURATION: 500,
+        // 자동 스크롤 관련
+        autoScrollInterval: null,
+        SCROLL_EDGE_SIZE: 80, // 화면 경계에서 스크롤 시작하는 영역 (px)
+        SCROLL_SPEED: 10, // 스크롤 속도 (px/프레임)
 
         init() {
             this.setupEditModeToggle();
@@ -3473,6 +3476,9 @@
             this.draggedElement.style.left = `${clientX - rect.width / 2}px`;
             this.draggedElement.style.top = `${clientY - rect.height / 2}px`;
 
+            // 화면 경계 자동 스크롤
+            this.handleAutoScroll(clientY);
+
             // 드롭 위치 찾기 (더 정확한 위치 계산)
             const afterElement = this.getDragAfterElement(clientX, clientY);
             const container = document.querySelector('.grid');
@@ -3488,6 +3494,45 @@
 
                 // 다른 위젯들이 자동으로 재배치됨 (CSS Grid auto-flow)
                 this.updateGridLayout();
+            }
+        },
+
+        // 화면 경계에서 자동 스크롤
+        handleAutoScroll(clientY) {
+            const mainContent = document.getElementById('main-content');
+            if (!mainContent) return;
+
+            const windowHeight = window.innerHeight;
+            const headerHeight = 130; // 헤더 높이 (대략)
+
+            // 이전 스크롤 인터벌 정리
+            if (this.autoScrollInterval) {
+                clearInterval(this.autoScrollInterval);
+                this.autoScrollInterval = null;
+            }
+
+            // 상단 경계 (헤더 아래)
+            if (clientY < headerHeight + this.SCROLL_EDGE_SIZE && clientY > headerHeight) {
+                const intensity = 1 - (clientY - headerHeight) / this.SCROLL_EDGE_SIZE;
+                const speed = Math.ceil(this.SCROLL_SPEED * intensity);
+                this.autoScrollInterval = setInterval(() => {
+                    mainContent.scrollTop -= speed;
+                }, 16);
+            }
+            // 하단 경계
+            else if (clientY > windowHeight - this.SCROLL_EDGE_SIZE) {
+                const intensity = 1 - (windowHeight - clientY) / this.SCROLL_EDGE_SIZE;
+                const speed = Math.ceil(this.SCROLL_SPEED * intensity);
+                this.autoScrollInterval = setInterval(() => {
+                    mainContent.scrollTop += speed;
+                }, 16);
+            }
+        },
+
+        stopAutoScroll() {
+            if (this.autoScrollInterval) {
+                clearInterval(this.autoScrollInterval);
+                this.autoScrollInterval = null;
             }
         },
 
@@ -3518,6 +3563,9 @@
 
         handleDragEnd(e) {
             if (!this.draggedElement) return;
+
+            // 자동 스크롤 중지
+            this.stopAutoScroll();
 
             // placeholder 위치에 원본 요소 삽입
             if (this.placeholder && this.placeholder.parentNode) {
