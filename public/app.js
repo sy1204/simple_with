@@ -1395,28 +1395,35 @@
 
     // ===== 사전 (Dictionary) =====
     const Dictionary = {
-        currentTab: 'korean', // 'korean' or 'english'
+        currentTab: Storage.get('dictTab', 'korean'), // 'korean', 'english', 'translate'
         isLoading: false,
         lastQuery: '',
         searchHistory: Storage.get('dictHistory', []),
-        historyIndex: -1, // 현재 히스토리 위치 (-1 = 새 검색)
+        historyIndex: -1,
 
         init() {
             this.bindEvents();
             this.updateTabButtons();
             this.updateNavButtons();
+            this.updatePlaceholder();
+            this.updateFooter();
         },
 
         bindEvents() {
-            // 탭 버튼
-            const koreanTab = document.getElementById('dict-tab-korean');
-
-            if (koreanTab) {
-                koreanTab.addEventListener('click', () => {
-                    this.currentTab = 'korean';
-                    this.updateTabButtons();
-                });
-            }
+            // 탭 버튼들
+            ['korean', 'english', 'translate'].forEach(tab => {
+                const btn = document.getElementById(`dict-tab-${tab}`);
+                if (btn) {
+                    btn.addEventListener('click', () => {
+                        this.currentTab = tab;
+                        Storage.set('dictTab', tab);
+                        this.updateTabButtons();
+                        this.updatePlaceholder();
+                        this.updateFooter();
+                        this.clearResults();
+                    });
+                }
+            });
 
             // 검색 버튼
             const searchBtn = document.getElementById('dict-search-btn');
@@ -1431,272 +1438,293 @@
                     if (e.key === 'Enter') this.search();
                 });
 
-                // 드래그 앤 드롭 이벤트
+                // 드래그 앤 드롭
                 searchInput.addEventListener('dragover', (e) => {
                     e.preventDefault();
                     searchInput.classList.add('border-primary', 'bg-primary/5');
                 });
-
                 searchInput.addEventListener('dragleave', (e) => {
                     e.preventDefault();
                     searchInput.classList.remove('border-primary', 'bg-primary/5');
                 });
-
                 searchInput.addEventListener('drop', (e) => {
                     e.preventDefault();
                     searchInput.classList.remove('border-primary', 'bg-primary/5');
-
-                    // 드래그된 텍스트 가져오기
-                    const droppedText = e.dataTransfer.getData('text/plain').trim();
-                    if (droppedText) {
-                        searchInput.value = droppedText;
+                    const text = e.dataTransfer.getData('text/plain').trim();
+                    if (text) {
+                        searchInput.value = text;
                         this.search();
                     }
                 });
             }
 
-            // 히스토리 네비게이션 버튼
-            const prevBtn = document.getElementById('dict-nav-prev');
-            const nextBtn = document.getElementById('dict-nav-next');
-
-            if (prevBtn) {
-                prevBtn.addEventListener('click', () => this.navigateHistory('prev'));
-            }
-
-            if (nextBtn) {
-                nextBtn.addEventListener('click', () => this.navigateHistory('next'));
-            }
+            // 히스토리 네비게이션
+            document.getElementById('dict-nav-prev')?.addEventListener('click', () => this.navigateHistory('prev'));
+            document.getElementById('dict-nav-next')?.addEventListener('click', () => this.navigateHistory('next'));
         },
 
         updateTabButtons() {
-            const koreanTab = document.getElementById('dict-tab-korean');
+            ['korean', 'english', 'translate'].forEach(tab => {
+                const btn = document.getElementById(`dict-tab-${tab}`);
+                if (btn) {
+                    btn.className = this.currentTab === tab
+                        ? 'dict-tab px-3 py-1 text-xs font-bold bg-white dark:bg-card-dark rounded shadow-sm'
+                        : 'dict-tab px-3 py-1 text-xs font-medium text-slate-500 hover:text-slate-700';
+                }
+            });
+        },
 
-            if (koreanTab) {
-                koreanTab.className = this.currentTab === 'korean'
-                    ? 'dict-tab px-3 py-1 text-xs font-bold bg-white dark:bg-card-dark rounded shadow-sm'
-                    : 'dict-tab px-3 py-1 text-xs font-medium text-slate-500';
-            }
+        updatePlaceholder() {
+            const input = document.getElementById('dict-search-input');
+            if (!input) return;
+            const placeholders = {
+                korean: '국어 단어를 검색하세요...',
+                english: '영어 단어를 검색하세요 (예: hello, computer)...',
+                translate: '번역할 문장을 입력하세요 (한↔영 자동 감지)...'
+            };
+            input.placeholder = placeholders[this.currentTab];
+        },
+
+        updateFooter() {
+            const source = document.getElementById('dict-source');
+            const link = document.getElementById('dict-link');
+            if (!source || !link) return;
+
+            const footers = {
+                korean: { text: '출처: 국립국어원 표준국어대사전', url: 'https://stdict.korean.go.kr', label: '사전 사이트 방문' },
+                english: { text: '출처: Free Dictionary API + 파파고', url: 'https://dictionaryapi.dev', label: 'API 정보' },
+                translate: { text: '출처: 네이버 파파고', url: 'https://papago.naver.com', label: '파파고 방문' }
+            };
+            const f = footers[this.currentTab];
+            source.textContent = f.text;
+            link.href = f.url;
+            link.innerHTML = `<span class="material-symbols-outlined text-sm">open_in_new</span>${f.label}`;
+        },
+
+        clearResults() {
+            const container = document.getElementById('dict-results');
+            if (!container) return;
+            const msgs = {
+                korean: '국어 단어를 검색해보세요',
+                english: '영어 단어를 검색하면 뜻과 발음을 확인할 수 있습니다',
+                translate: '한국어 또는 영어 문장을 입력하면 자동으로 번역됩니다'
+            };
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full text-slate-400">
+                    <span class="material-symbols-outlined text-4xl mb-2">search</span>
+                    <p class="text-sm">${msgs[this.currentTab]}</p>
+                </div>`;
         },
 
         updateNavButtons() {
             const prevBtn = document.getElementById('dict-nav-prev');
             const nextBtn = document.getElementById('dict-nav-next');
-
-            if (prevBtn) {
-                // 이전 버튼: 히스토리에서 더 이전으로 갈 수 있을 때 활성화
-                prevBtn.disabled = this.historyIndex >= this.searchHistory.length - 1;
-            }
-
-            if (nextBtn) {
-                // 다음 버튼: 히스토리에서 더 앞으로 갈 수 있을 때 활성화
-                nextBtn.disabled = this.historyIndex <= 0;
-            }
+            if (prevBtn) prevBtn.disabled = this.historyIndex >= this.searchHistory.length - 1;
+            if (nextBtn) nextBtn.disabled = this.historyIndex <= 0;
         },
 
         navigateHistory(direction) {
-            if (direction === 'prev') {
-                if (this.historyIndex < this.searchHistory.length - 1) {
-                    this.historyIndex++;
-                }
-            } else if (direction === 'next') {
-                if (this.historyIndex > 0) {
-                    this.historyIndex--;
-                }
+            if (direction === 'prev' && this.historyIndex < this.searchHistory.length - 1) {
+                this.historyIndex++;
+            } else if (direction === 'next' && this.historyIndex > 0) {
+                this.historyIndex--;
             }
-
             const query = this.searchHistory[this.historyIndex];
             if (query) {
-                const input = document.getElementById('dict-search-input');
-                if (input) {
-                    input.value = query;
-                }
+                document.getElementById('dict-search-input').value = query;
                 this.searchWithoutHistory(query);
             }
         },
 
-        // 히스토리에 추가하지 않고 검색 (네비게이션용)
         async searchWithoutHistory(query) {
             if (!query || this.isLoading) return;
-
             this.isLoading = true;
             this.lastQuery = query;
             this.showLoading();
 
             try {
-                const response = await fetch(`/api/dictionary?q=${encodeURIComponent(query)}`);
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+                let data;
+                if (this.currentTab === 'korean') {
+                    data = await this.fetchKorean(query);
+                    this.renderKoreanResults(data, query);
+                } else if (this.currentTab === 'english') {
+                    data = await this.fetchEnglish(query);
+                    this.renderEnglishResults(data, query);
+                } else {
+                    data = await this.fetchTranslate(query);
+                    this.renderTranslateResults(data, query);
                 }
-
-                const data = await response.json();
-
-                if (data.error) {
-                    this.showMessage(data.error.message || '검색 중 오류가 발생했습니다.', 'error');
-                    return;
-                }
-
-                this.renderResults(data, query);
                 this.updateNavButtons();
-
             } catch (error) {
-                console.error('Dictionary search error:', error);
-                this.showMessage('검색 중 오류가 발생했습니다: ' + error.message, 'error');
+                this.showMessage('검색 중 오류: ' + error.message, 'error');
             } finally {
                 this.isLoading = false;
             }
         },
 
         async search() {
-            const input = document.getElementById('dict-search-input');
-            const query = input?.value.trim();
-
+            const query = document.getElementById('dict-search-input')?.value.trim();
             if (!query) {
                 this.showMessage('검색어를 입력해주세요.', 'warning');
                 return;
             }
-
-            if (this.isLoading) return;
-
-            this.isLoading = true;
-            this.lastQuery = query;
-            this.showLoading();
-
-            try {
-                // Vercel API 엔드포인트 호출
-                const response = await fetch(`/api/dictionary?q=${encodeURIComponent(query)}`);
-
-                // 에러 발생 시 본문을 먼저 읽어보려고 시도
-                let data;
-                try {
-                    data = await response.json();
-                } catch (e) {
-                    data = null;
-                }
-
-                if (!response.ok) {
-                    // 서버 응답이 에러(500 등)인 경우 데이터의 메시지 또는 상태 코드 표시
-                    const errorMsg = data?.error?.message || `서버 오류가 발생했습니다 (HTTP ${response.status})`;
-                    throw new Error(errorMsg);
-                }
-
-                if (data.error) {
-                    this.showMessage(data.error.message || '검색 중 오류가 발생했습니다.', 'error');
-                    return;
-                }
-
-                this.renderResults(data, query);
-                this.addToHistory(query);
-
-            } catch (error) {
-                console.error('Dictionary search error:', error);
-
-                // 로컬 개발 시 API가 없을 경우 안내 메시지
-                if (error.message.includes('Failed to fetch') || error.message.includes('404')) {
-                    this.showMessage(
-                        '로컬 환경에서는 API 서버가 필요합니다.<br>' +
-                        '<code>vercel dev</code> 명령으로 실행하거나<br>' +
-                        'Vercel에 배포 후 사용해주세요.',
-                        'info'
-                    );
-                } else {
-                    this.showMessage('검색 중 오류가 발생했습니다: ' + error.message, 'error');
-                }
-            } finally {
-                this.isLoading = false;
-            }
+            await this.searchWithoutHistory(query);
+            this.addToHistory(query);
         },
 
+        async fetchKorean(query) {
+            const res = await fetch(`/api/dictionary?q=${encodeURIComponent(query)}`);
+            return res.json();
+        },
 
-        renderResults(data, query) {
+        async fetchEnglish(query) {
+            const res = await fetch(`/api/english?q=${encodeURIComponent(query)}`);
+            return res.json();
+        },
+
+        async fetchTranslate(query) {
+            const res = await fetch(`/api/translate?text=${encodeURIComponent(query)}&source=auto&target=auto`);
+            return res.json();
+        },
+
+        renderKoreanResults(data, query) {
             const container = document.getElementById('dict-results');
             if (!container) return;
 
-            const items = data.channel?.item;
-            const total = data.channel?.total || 0;
-
-            if (!items || items.length === 0) {
-                container.innerHTML = `
-                    <div class="flex flex-col items-center justify-center h-full text-slate-400">
-                        <span class="material-symbols-outlined text-4xl mb-2">search_off</span>
-                        <p class="text-sm">'${this.escapeHtml(query)}'에 대한 검색 결과가 없습니다.</p>
-                    </div>`;
+            if (data.error) {
+                this.showMessage(data.error.message, 'error');
                 return;
             }
 
-            let html = `
-                <div class="mb-3 flex items-center justify-between">
-                    <span class="text-xs text-slate-500">총 <strong class="text-primary">${total}</strong>개의 결과</span>
-                </div>
-                <div class="space-y-2">`;
+            const items = data.channel?.item;
+            if (!items || items.length === 0) {
+                container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-400">
+                    <span class="material-symbols-outlined text-4xl mb-2">search_off</span>
+                    <p class="text-sm">'${this.escapeHtml(query)}'에 대한 결과가 없습니다.</p>
+                </div>`;
+                return;
+            }
 
+            let html = `<div class="mb-3"><span class="text-xs text-slate-500">총 <strong class="text-primary">${data.channel?.total || 0}</strong>개</span></div><div class="space-y-2">`;
             items.forEach(item => {
                 const word = item.word || '';
                 const pos = item.pos || '';
-                const definition = item.sense?.definition || '';
+                const def = item.sense?.definition || '';
                 const link = item.sense?.link || '';
-                const type = item.sense?.type || '';
-                const supNo = item.sup_no ? `<sup class="text-slate-400 text-[10px]">${item.sup_no}</sup>` : '';
-
-                html += `
-                    <div class="bg-white dark:bg-card-dark rounded-lg p-3 border border-slate-100 dark:border-slate-700 hover:border-primary/30 transition-colors">
-                        <div class="flex items-start justify-between gap-2">
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-1.5 mb-1 flex-wrap">
-                                    <span class="text-base font-bold text-slate-800 dark:text-white">${this.escapeHtml(word)}${supNo}</span>
-                                    ${pos ? `<span class="px-1.5 py-0.5 text-[10px] font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded">${this.escapeHtml(pos)}</span>` : ''}
-                                    ${type && type !== '일반어' ? `<span class="px-1.5 py-0.5 text-[10px] font-medium bg-slate-100 dark:bg-slate-700 text-slate-500 rounded">${this.escapeHtml(type)}</span>` : ''}
-                                </div>
-                                <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">${this.escapeHtml(definition)}</p>
+                html += `<div class="bg-white dark:bg-card-dark rounded-lg p-3 border border-slate-100 dark:border-slate-700 hover:border-primary/30 transition-colors">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-1.5 mb-1 flex-wrap">
+                                <span class="text-base font-bold">${this.escapeHtml(word)}</span>
+                                ${pos ? `<span class="px-1.5 py-0.5 text-[10px] font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 rounded">${this.escapeHtml(pos)}</span>` : ''}
                             </div>
-                            ${link ? `
-                                <a href="${link}" target="_blank" rel="noopener" class="shrink-0 p-1.5 text-slate-400 hover:text-primary transition-colors" title="표준국어대사전에서 보기">
-                                    <span class="material-symbols-outlined text-lg">open_in_new</span>
-                                </a>
-                            ` : ''}
+                            <p class="text-sm text-slate-600 dark:text-slate-300">${this.escapeHtml(def)}</p>
                         </div>
-                    </div>`;
+                        ${link ? `<a href="${link}" target="_blank" class="shrink-0 p-1.5 text-slate-400 hover:text-primary"><span class="material-symbols-outlined text-lg">open_in_new</span></a>` : ''}
+                    </div>
+                </div>`;
             });
+            container.innerHTML = html + '</div>';
+        },
 
-            html += '</div>';
-            container.innerHTML = html;
+        renderEnglishResults(data, query) {
+            const container = document.getElementById('dict-results');
+            if (!container) return;
+
+            if (data.error) {
+                this.showMessage(data.error.message, 'error');
+                return;
+            }
+
+            let html = `<div class="space-y-4">`;
+            
+            // 단어 헤더
+            html += `<div class="bg-white dark:bg-card-dark rounded-lg p-4 border border-slate-100 dark:border-slate-700">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl font-bold">${this.escapeHtml(data.word)}</span>
+                        ${data.phonetic ? `<span class="text-sm text-slate-500">${this.escapeHtml(data.phonetic)}</span>` : ''}
+                        ${data.audio ? `<button onclick="new Audio('${data.audio}').play()" class="p-1 text-primary hover:bg-primary/10 rounded-full"><span class="material-symbols-outlined text-lg">volume_up</span></button>` : ''}
+                    </div>
+                </div>
+                ${data.koreanMeaning ? `<div class="text-lg text-primary font-medium">${this.escapeHtml(data.koreanMeaning)}</div>` : ''}
+            </div>`;
+
+            // 의미들
+            if (data.meanings && data.meanings.length > 0) {
+                data.meanings.forEach(meaning => {
+                    html += `<div class="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3">
+                        <div class="text-xs font-semibold text-primary mb-2">${this.escapeHtml(meaning.partOfSpeech)}</div>
+                        <ul class="space-y-2">`;
+                    meaning.definitions.forEach((def, i) => {
+                        html += `<li class="text-sm">
+                            <span class="text-slate-400 mr-1">${i + 1}.</span>
+                            <span class="text-slate-700 dark:text-slate-200">${this.escapeHtml(def.definition)}</span>
+                            ${def.example ? `<div class="text-xs text-slate-500 mt-1 italic">"${this.escapeHtml(def.example)}"</div>` : ''}
+                        </li>`;
+                    });
+                    html += `</ul></div>`;
+                });
+            }
+
+            container.innerHTML = html + '</div>';
+        },
+
+        renderTranslateResults(data, query) {
+            const container = document.getElementById('dict-results');
+            if (!container) return;
+
+            if (data.error) {
+                this.showMessage(data.error.message, 'error');
+                return;
+            }
+
+            const langNames = { ko: '한국어', en: '영어', ja: '일본어', zh: '중국어' };
+            const sourceLang = langNames[data.source] || data.source;
+            const targetLang = langNames[data.target] || data.target;
+
+            container.innerHTML = `
+                <div class="space-y-4">
+                    <div class="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-xs font-medium text-slate-500">${sourceLang}</span>
+                        </div>
+                        <p class="text-slate-700 dark:text-slate-200">${this.escapeHtml(data.text)}</p>
+                    </div>
+                    <div class="flex justify-center">
+                        <span class="material-symbols-outlined text-2xl text-primary">arrow_downward</span>
+                    </div>
+                    <div class="bg-primary/5 dark:bg-primary/10 rounded-lg p-4 border-2 border-primary/20">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-xs font-medium text-primary">${targetLang}</span>
+                        </div>
+                        <p class="text-lg font-medium text-slate-800 dark:text-white">${this.escapeHtml(data.translatedText)}</p>
+                    </div>
+                    <button onclick="navigator.clipboard.writeText('${this.escapeHtml(data.translatedText).replace(/'/g, "\\'")}'); this.textContent='복사됨!'; setTimeout(() => this.innerHTML='<span class=\\'material-symbols-outlined text-sm\\'>content_copy</span> 번역 복사', 2000);"
+                        class="w-full py-2 text-sm font-medium text-slate-600 hover:text-primary bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center gap-1 transition-colors">
+                        <span class="material-symbols-outlined text-sm">content_copy</span> 번역 복사
+                    </button>
+                </div>`;
         },
 
         showLoading() {
             const container = document.getElementById('dict-results');
             if (!container) return;
-
-            container.innerHTML = `
-                <div class="flex flex-col items-center justify-center h-full text-slate-400">
-                    <div class="animate-spin mb-3">
-                        <span class="material-symbols-outlined text-4xl text-primary">progress_activity</span>
-                    </div>
-                    <p class="text-sm">검색 중...</p>
-                </div>`;
+            container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-400">
+                <div class="animate-spin mb-3"><span class="material-symbols-outlined text-4xl text-primary">progress_activity</span></div>
+                <p class="text-sm">검색 중...</p>
+            </div>`;
         },
 
         showMessage(message, type = 'info') {
             const container = document.getElementById('dict-results');
             if (!container) return;
-
-            const icons = {
-                info: 'info',
-                warning: 'warning',
-                error: 'error',
-                success: 'check_circle'
-            };
-            const colors = {
-                info: 'text-blue-500',
-                warning: 'text-amber-500',
-                error: 'text-red-500',
-                success: 'text-green-500'
-            };
-
-            container.innerHTML = `
-                <div class="flex flex-col items-center justify-center h-full text-slate-400">
-                    <span class="material-symbols-outlined text-4xl mb-2 ${colors[type]}">${icons[type]}</span>
-                    <p class="text-sm text-center">${message}</p>
-                </div>`;
+            const icons = { info: 'info', warning: 'warning', error: 'error', success: 'check_circle' };
+            const colors = { info: 'text-blue-500', warning: 'text-amber-500', error: 'text-red-500', success: 'text-green-500' };
+            container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-400">
+                <span class="material-symbols-outlined text-4xl mb-2 ${colors[type]}">${icons[type]}</span>
+                <p class="text-sm text-center">${message}</p>
+            </div>`;
         },
 
         addToHistory(query) {
@@ -1704,8 +1732,284 @@
             this.searchHistory.unshift(query);
             if (this.searchHistory.length > 10) this.searchHistory.pop();
             Storage.set('dictHistory', this.searchHistory);
-            this.historyIndex = 0; // 새 검색은 히스토리 첫 번째 위치
+            this.historyIndex = 0;
             this.updateNavButtons();
+        },
+
+        escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    };
+
+    // ===== 날씨 (Weather) =====
+    const Weather = {
+        city: Storage.get('weatherCity', '60,127'), // 서울 기본값
+        cities: {
+            '60,127': '서울', '97,74': '부산', '89,90': '대구',
+            '55,124': '인천', '67,100': '대전', '62,123': '판교', '52,38': '제주'
+        },
+        data: null,
+
+        init() {
+            this.bindEvents();
+            this.load();
+        },
+
+        bindEvents() {
+            const select = document.getElementById('weather-city');
+            if (select) {
+                select.value = this.city;
+                select.addEventListener('change', (e) => {
+                    this.city = e.target.value;
+                    Storage.set('weatherCity', this.city);
+                    this.load();
+                });
+            }
+        },
+
+        async load() {
+            const container = document.getElementById('weather-content');
+            if (!container) return;
+
+            container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-400 py-8">
+                <span class="material-symbols-outlined text-4xl mb-2 animate-pulse">cloud_sync</span>
+                <p class="text-sm">날씨 정보를 불러오는 중...</p>
+            </div>`;
+
+            try {
+                const [nx, ny] = this.city.split(',');
+                const res = await fetch(`/api/weather?nx=${nx}&ny=${ny}&type=ultra`);
+                const data = await res.json();
+
+                if (data.error) {
+                    this.showError(data.error.message);
+                    return;
+                }
+
+                this.data = this.parseWeatherData(data);
+                this.render();
+            } catch (error) {
+                this.showError('날씨 정보를 불러올 수 없습니다: ' + error.message);
+            }
+        },
+
+        parseWeatherData(data) {
+            const items = data.response?.body?.items?.item || [];
+            const result = {};
+            items.forEach(item => {
+                result[item.category] = item.obsrValue || item.fcstValue;
+            });
+            return result;
+        },
+
+        render() {
+            const container = document.getElementById('weather-content');
+            if (!container || !this.data) return;
+
+            const temp = this.data.T1H || this.data.TMP || '-';
+            const humidity = this.data.REH || '-';
+            const sky = this.data.PTY || '0'; // 강수형태
+            const wind = this.data.WSD || '-';
+
+            // 날씨 아이콘 결정
+            const weatherIcons = { '0': 'sunny', '1': 'rainy', '2': 'weather_mix', '3': 'weather_snowy', '4': 'rainy' };
+            const weatherNames = { '0': '맑음', '1': '비', '2': '비/눈', '3': '눈', '4': '소나기' };
+            const icon = weatherIcons[sky] || 'cloud';
+            const condition = weatherNames[sky] || '흐림';
+
+            container.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <span class="material-symbols-outlined text-6xl text-primary">${icon}</span>
+                        <div>
+                            <div class="text-4xl font-bold">${temp}°</div>
+                            <div class="text-sm text-slate-500">${condition}</div>
+                        </div>
+                    </div>
+                    <div class="text-right space-y-1">
+                        <div class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <span class="material-symbols-outlined text-lg">water_drop</span>
+                            <span>습도 ${humidity}%</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <span class="material-symbols-outlined text-lg">air</span>
+                            <span>풍속 ${wind}m/s</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400 text-center">
+                    ${this.cities[this.city]} · ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 기준
+                </div>`;
+        },
+
+        showError(message) {
+            const container = document.getElementById('weather-content');
+            if (!container) return;
+            container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-400 py-8">
+                <span class="material-symbols-outlined text-4xl mb-2 text-red-400">cloud_off</span>
+                <p class="text-sm text-center">${message}</p>
+            </div>`;
+        }
+    };
+
+    // ===== 맛집 검색 (Place) =====
+    const Place = {
+        lastQuery: Storage.get('placeLastQuery', ''),
+        results: [],
+
+        init() {
+            this.bindEvents();
+            if (this.lastQuery) {
+                document.getElementById('place-search-input').value = this.lastQuery;
+            }
+        },
+
+        bindEvents() {
+            const searchBtn = document.getElementById('place-search-btn');
+            const searchInput = document.getElementById('place-search-input');
+            const randomBtn = document.getElementById('place-random-btn');
+
+            searchBtn?.addEventListener('click', () => this.search());
+            searchInput?.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.search();
+            });
+            randomBtn?.addEventListener('click', () => this.randomPick());
+
+            // 카테고리 버튼
+            document.querySelectorAll('.place-cat').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const cat = btn.dataset.cat;
+                    const input = document.getElementById('place-search-input');
+                    const current = input.value.trim();
+                    // 지역명이 있으면 카테고리 추가, 없으면 경고
+                    if (current && !current.includes(cat)) {
+                        input.value = current + ' ' + cat;
+                    } else if (!current) {
+                        input.value = cat;
+                    }
+                    this.search();
+                });
+            });
+        },
+
+        async search() {
+            const input = document.getElementById('place-search-input');
+            const query = input?.value.trim();
+
+            if (!query) {
+                this.showMessage('검색어를 입력해주세요. 예: "강남역 맛집"', 'warning');
+                return;
+            }
+
+            this.lastQuery = query;
+            Storage.set('placeLastQuery', query);
+            this.showLoading();
+
+            try {
+                const res = await fetch(`/api/place?q=${encodeURIComponent(query)}&display=10`);
+                const data = await res.json();
+
+                if (data.error) {
+                    this.showMessage(data.error.message, 'error');
+                    return;
+                }
+
+                this.results = data.items || [];
+                this.renderResults(data);
+            } catch (error) {
+                this.showMessage('검색 중 오류: ' + error.message, 'error');
+            }
+        },
+
+        renderResults(data) {
+            const container = document.getElementById('place-results');
+            if (!container) return;
+
+            if (!data.items || data.items.length === 0) {
+                container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-400">
+                    <span class="material-symbols-outlined text-4xl mb-2">search_off</span>
+                    <p class="text-sm">검색 결과가 없습니다</p>
+                </div>`;
+                return;
+            }
+
+            let html = `<div class="mb-3"><span class="text-xs text-slate-500">총 <strong class="text-primary">${data.total}</strong>개</span></div><div class="space-y-2">`;
+
+            data.items.forEach(item => {
+                const categoryBadge = item.category ? `<span class="px-1.5 py-0.5 text-[10px] font-medium bg-orange-50 dark:bg-orange-900/30 text-orange-600 rounded">${this.escapeHtml(item.category.split('>').pop())}</span>` : '';
+                
+                html += `<div class="bg-white dark:bg-card-dark rounded-lg p-3 border border-slate-100 dark:border-slate-700 hover:border-primary/30 transition-colors">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-1.5 mb-1 flex-wrap">
+                                <span class="text-base font-bold text-slate-800 dark:text-white">${this.escapeHtml(item.title)}</span>
+                                ${categoryBadge}
+                            </div>
+                            <p class="text-xs text-slate-500 mb-1">${this.escapeHtml(item.roadAddress || item.address)}</p>
+                            ${item.telephone ? `<p class="text-xs text-slate-400"><span class="material-symbols-outlined text-sm align-middle">call</span> ${this.escapeHtml(item.telephone)}</p>` : ''}
+                        </div>
+                        ${item.link ? `<a href="${item.link}" target="_blank" class="shrink-0 p-1.5 text-slate-400 hover:text-primary" title="네이버에서 보기"><span class="material-symbols-outlined text-lg">open_in_new</span></a>` : ''}
+                    </div>
+                </div>`;
+            });
+
+            container.innerHTML = html + '</div>';
+        },
+
+        randomPick() {
+            if (this.results.length === 0) {
+                this.showMessage('먼저 검색을 해주세요!', 'warning');
+                return;
+            }
+
+            const container = document.getElementById('place-results');
+            if (!container) return;
+
+            // 애니메이션 효과
+            let count = 0;
+            const interval = setInterval(() => {
+                const random = this.results[Math.floor(Math.random() * this.results.length)];
+                container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-400 py-8">
+                    <span class="material-symbols-outlined text-5xl mb-3 text-primary animate-bounce">casino</span>
+                    <p class="text-xl font-bold text-slate-700 dark:text-white">${this.escapeHtml(random.title)}</p>
+                </div>`;
+                count++;
+                if (count >= 10) {
+                    clearInterval(interval);
+                    // 최종 선택
+                    const final = this.results[Math.floor(Math.random() * this.results.length)];
+                    container.innerHTML = `<div class="flex flex-col items-center justify-center h-full py-6">
+                        <span class="material-symbols-outlined text-5xl mb-3 text-primary">restaurant</span>
+                        <p class="text-xl font-bold text-slate-800 dark:text-white mb-2">${this.escapeHtml(final.title)}</p>
+                        <p class="text-sm text-slate-500 mb-1">${final.category ? this.escapeHtml(final.category.split('>').pop()) : ''}</p>
+                        <p class="text-xs text-slate-400 mb-4">${this.escapeHtml(final.roadAddress || final.address)}</p>
+                        ${final.link ? `<a href="${final.link}" target="_blank" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-blue-600 flex items-center gap-1"><span class="material-symbols-outlined text-sm">open_in_new</span>상세보기</a>` : ''}
+                    </div>`;
+                }
+            }, 100);
+        },
+
+        showLoading() {
+            const container = document.getElementById('place-results');
+            if (!container) return;
+            container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-400 py-8">
+                <div class="animate-spin mb-3"><span class="material-symbols-outlined text-4xl text-primary">progress_activity</span></div>
+                <p class="text-sm">검색 중...</p>
+            </div>`;
+        },
+
+        showMessage(message, type = 'info') {
+            const container = document.getElementById('place-results');
+            if (!container) return;
+            const icons = { info: 'info', warning: 'warning', error: 'error' };
+            const colors = { info: 'text-blue-500', warning: 'text-amber-500', error: 'text-red-500' };
+            container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-400 py-8">
+                <span class="material-symbols-outlined text-4xl mb-2 ${colors[type]}">${icons[type]}</span>
+                <p class="text-sm text-center">${message}</p>
+            </div>`;
         },
 
         escapeHtml(text) {
@@ -1727,5 +2031,7 @@
         Converter.init();
         Memo.init();
         Dictionary.init();
+        Weather.init();
+        Place.init();
     });
 })();

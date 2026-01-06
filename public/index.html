@@ -208,6 +208,14 @@
                                 href="#dictionary"><span
                                     class="material-symbols-outlined text-[16px] text-slate-400">menu_book</span>사전</a>
                         </li>
+                        <li><a class="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white py-1.5"
+                                href="#weather"><span
+                                    class="material-symbols-outlined text-[16px] text-slate-400">cloud</span>날씨</a>
+                        </li>
+                        <li><a class="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white py-1.5"
+                                href="#place"><span
+                                    class="material-symbols-outlined text-[16px] text-slate-400">restaurant</span>맛집</a>
+                        </li>
                     </ul>
                 </nav>
             </header>
@@ -426,8 +434,9 @@
                                 <button id="dict-tab-korean"
                                     class="dict-tab px-3 py-1 text-xs font-bold bg-white dark:bg-card-dark rounded shadow-sm">국어</button>
                                 <button id="dict-tab-english"
-                                    class="dict-tab px-3 py-1 text-xs font-medium text-slate-400 cursor-not-allowed"
-                                    disabled title="영어 사전은 준비 중입니다">영어</button>
+                                    class="dict-tab px-3 py-1 text-xs font-medium text-slate-500 hover:text-slate-700">영어</button>
+                                <button id="dict-tab-translate"
+                                    class="dict-tab px-3 py-1 text-xs font-medium text-slate-500 hover:text-slate-700">번역</button>
                             </div>
                         </div>
 
@@ -465,14 +474,84 @@
                         </div>
 
                         <!-- Footer Info -->
-                        <div
+                        <div id="dict-footer"
                             class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs text-slate-400">
-                            <span>출처: 국립국어원 표준국어대사전</span>
-                            <a href="https://stdict.korean.go.kr" target="_blank" rel="noopener"
+                            <span id="dict-source">출처: 국립국어원 표준국어대사전</span>
+                            <a id="dict-link" href="https://stdict.korean.go.kr" target="_blank" rel="noopener"
                                 class="flex items-center gap-1 hover:text-primary transition-colors">
                                 <span class="material-symbols-outlined text-sm">open_in_new</span>
                                 사전 사이트 방문
                             </a>
+                        </div>
+                    </div>
+
+                    <!-- Weather Card -->
+                    <div id="weather"
+                        class="card group relative col-span-1 lg:col-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-bold flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary">cloud</span>날씨
+                            </h3>
+                            <select id="weather-city"
+                                class="text-sm bg-slate-100 dark:bg-slate-800 border-none rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-primary">
+                                <option value="60,127">서울</option>
+                                <option value="97,74">부산</option>
+                                <option value="89,90">대구</option>
+                                <option value="55,124">인천</option>
+                                <option value="67,100">대전</option>
+                                <option value="62,123">판교</option>
+                                <option value="52,38">제주</option>
+                            </select>
+                        </div>
+                        <div id="weather-content" class="flex-1">
+                            <div class="flex flex-col items-center justify-center h-full text-slate-400 py-8">
+                                <span class="material-symbols-outlined text-4xl mb-2 animate-pulse">cloud_sync</span>
+                                <p class="text-sm">날씨 정보를 불러오는 중...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Place Search Card -->
+                    <div id="place"
+                        class="card group relative col-span-1 lg:col-span-2 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-bold flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary">restaurant</span>맛집 검색
+                            </h3>
+                            <button id="place-random-btn"
+                                class="px-3 py-1 text-xs font-medium bg-primary text-white rounded-full hover:bg-blue-600 transition-colors flex items-center gap-1">
+                                <span class="material-symbols-outlined text-sm">casino</span>랜덤 추천
+                            </button>
+                        </div>
+
+                        <!-- Search Box -->
+                        <div class="flex gap-2 mb-4">
+                            <input id="place-search-input" type="text" placeholder="예: 강남역 맛집, 판교 카페..."
+                                class="flex-1 bg-background-light dark:bg-[#111822] border-none rounded-lg text-sm px-4 py-2.5 focus:ring-2 focus:ring-primary/50" />
+                            <button id="place-search-btn"
+                                class="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-1 transition-colors">
+                                <span class="material-symbols-outlined text-lg">search</span>
+                            </button>
+                        </div>
+
+                        <!-- Category Chips -->
+                        <div id="place-categories" class="flex flex-wrap gap-2 mb-4">
+                            <button class="place-cat px-3 py-1 text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-full hover:bg-primary hover:text-white transition-colors" data-cat="한식">한식</button>
+                            <button class="place-cat px-3 py-1 text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-full hover:bg-primary hover:text-white transition-colors" data-cat="중식">중식</button>
+                            <button class="place-cat px-3 py-1 text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-full hover:bg-primary hover:text-white transition-colors" data-cat="일식">일식</button>
+                            <button class="place-cat px-3 py-1 text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-full hover:bg-primary hover:text-white transition-colors" data-cat="양식">양식</button>
+                            <button class="place-cat px-3 py-1 text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-full hover:bg-primary hover:text-white transition-colors" data-cat="카페">카페</button>
+                            <button class="place-cat px-3 py-1 text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-full hover:bg-primary hover:text-white transition-colors" data-cat="분식">분식</button>
+                        </div>
+
+                        <!-- Results Area -->
+                        <div id="place-results"
+                            class="flex-1 min-h-[200px] bg-slate-50 dark:bg-slate-800/30 rounded-lg p-4 overflow-y-auto">
+                            <div class="flex flex-col items-center justify-center h-full text-slate-400">
+                                <span class="material-symbols-outlined text-4xl mb-2">location_searching</span>
+                                <p class="text-sm">지역과 함께 검색해보세요</p>
+                                <p class="text-xs mt-1">예: "강남역 맛집", "판교 카페"</p>
+                            </div>
                         </div>
                     </div>
 
