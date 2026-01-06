@@ -1282,7 +1282,7 @@
                     </div>
                     <div class="flex-1 bg-background-light dark:bg-[#111822] rounded-lg p-4 flex flex-col justify-center">
                         <div id="fin-result-info" class="text-[10px] text-slate-400 text-right mb-2"></div>
-                        <div class="flex items-center justify-between mb-2 pb-2 border-b border-slate-200 dark:border-slate-700"><span class="text-xs text-slate-500">이자 수익</span><span id="fin-interest" class="text-base font-bold text-emerald-500">-</span></div>
+                        <div class="flex items-center justify-between mb-2 pb-2 border-b border-slate-200 dark:border-slate-700"><span class="text-xs text-slate-500">이자</span><span id="fin-interest" class="text-base font-bold text-emerald-500">-</span></div>
                         <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-200 dark:border-slate-700"><span class="text-xs text-slate-500">최종 수령액</span><span id="fin-total" class="text-lg font-bold">-</span></div>
                         <div id="fin-yearly-info" class="text-xs text-slate-400 hidden"></div>
                     </div>`;
