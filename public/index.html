@@ -61,6 +61,7 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+
         .scrollbar-hide::-webkit-scrollbar {
             display: none;
         }
@@ -70,34 +71,40 @@
             #calendar-container .grid {
                 font-size: 11px;
             }
+
             #calendar-container .cal-day {
                 min-height: 32px !important;
                 padding: 2px !important;
             }
+
             #calendar {
                 padding: 12px !important;
             }
         }
 
         /* 부드러운 스크롤 */
-        html, body, #main-content {
+        html,
+        body,
+        #main-content {
             scroll-behavior: smooth;
         }
-        
+
         /* 스크롤 시 헤더 높이만큼 여백 */
         #main-content {
             scroll-padding-top: 20px;
         }
-        
+
         /* 각 위젯 카드에 스크롤 마진 (헤더 가림 방지) */
         .card {
             scroll-margin-top: 120px;
         }
+
         @media (min-width: 768px) {
             .card {
                 scroll-margin-top: 130px;
             }
         }
+
         @media (min-width: 1024px) {
             .card {
                 scroll-margin-top: 140px;
@@ -106,20 +113,43 @@
 
         /* 위젯 하이라이트 애니메이션 */
         @keyframes widget-highlight {
-            0%, 100% { box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-            25% { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); }
-            50% { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3); }
-            75% { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); }
+
+            0%,
+            100% {
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            }
+
+            25% {
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+            }
+
+            50% {
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+            }
+
+            75% {
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+            }
         }
+
         .widget-highlight {
             animation: widget-highlight 1s ease-in-out;
         }
+
         .widget-highlight h3 {
             animation: pulse 0.5s ease-in-out 2;
         }
+
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
         }
 
         /* Anti-Blue (눈 보호) 테마 - 웜 톤 */
@@ -233,9 +263,19 @@
         }
 
         @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-2px); }
-            75% { transform: translateX(2px); }
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-2px);
+            }
+
+            75% {
+                transform: translateX(2px);
+            }
         }
 
         .edit-mode .card.edit-mode-active {
@@ -285,7 +325,8 @@
                             <span class="text-lg font-bold tracking-tight hidden md:block">심플데스크</span>
                         </div>
                         <div class="hidden md:block h-6 w-px bg-slate-200 dark:bg-slate-700 mx-2"></div>
-                        <h2 class="text-sm md:text-base font-medium leading-tight text-slate-600 dark:text-slate-400">안녕하세요! 간단한 조회 메모 가능합니다.</h2>
+                        <h2 class="text-sm md:text-base font-medium leading-tight text-slate-600 dark:text-slate-400">
+                            안녕하세요! 간단한 조회 메모 가능합니다.</h2>
                     </div>
                     <div class="flex items-center gap-3 lg:gap-6">
                         <div
@@ -317,7 +358,8 @@
                         </div>
                     </div>
                 </div>
-                <nav class="border-t border-slate-100 dark:border-slate-800 px-4 lg:px-10 py-2 overflow-x-auto scrollbar-hide">
+                <nav
+                    class="border-t border-slate-100 dark:border-slate-800 px-4 lg:px-10 py-2 overflow-x-auto scrollbar-hide">
                     <ul class="flex items-center gap-3 md:gap-6 flex-nowrap min-w-max">
                         <li><a class="flex items-center gap-1.5 text-xs font-semibold text-primary px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20"
                                 href="#"><span class="material-symbols-outlined text-[16px]">grid_view</span>전체보기</a>
@@ -363,26 +405,9 @@
             </header>
 
             <!-- Main Content -->
-            <div id="main-content" class="flex-1 overflow-y-auto p-4 lg:p-8 pt-28 md:pt-32 lg:pt-36 bg-background-light dark:bg-background-dark scroll-pt-28 md:scroll-pt-32 lg:scroll-pt-36">
+            <div id="main-content"
+                class="flex-1 overflow-y-auto p-4 lg:p-8 pt-28 md:pt-32 lg:pt-36 bg-background-light dark:bg-background-dark scroll-pt-28 md:scroll-pt-32 lg:scroll-pt-36">
                 <div class="max-w-[1600px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 pb-10">
-
-                    <!-- Finance Card -->
-                    <div id="finance"
-                        class="card group relative col-span-1 lg:col-span-2 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col gap-4">
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-lg font-bold flex items-center gap-2">
-                                <span class="material-symbols-outlined text-primary">savings</span>금융 계산기
-                            </h3>
-                            <div class="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
-                                <button id="finance-interest"
-                                    class="px-3 py-1 text-xs font-bold bg-white dark:bg-card-dark rounded shadow-sm">이자
-                                    계산</button>
-                                <button id="finance-discount" class="px-3 py-1 text-xs font-medium text-slate-500">할인
-                                    계산</button>
-                            </div>
-                        </div>
-                        <div id="finance-content" class="flex flex-col md:flex-row gap-6"></div>
-                    </div>
 
                     <!-- 시간 위젯 (Time Widget) -->
                     <div id="time-widget"
@@ -484,11 +509,15 @@
                                     <!-- JS에서 렌더링 -->
                                 </div>
                                 <!-- 새로고침 버튼 -->
-                                <button id="weather-refresh-btn" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="새로고침">
+                                <button id="weather-refresh-btn"
+                                    class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                    title="새로고침">
                                     <span class="material-symbols-outlined text-lg text-slate-500">refresh</span>
                                 </button>
                                 <!-- 설정 버튼 -->
-                                <button id="weather-settings-btn" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="지역 설정">
+                                <button id="weather-settings-btn"
+                                    class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                    title="지역 설정">
                                     <span class="material-symbols-outlined text-lg text-slate-500">settings</span>
                                 </button>
                             </div>
@@ -500,21 +529,26 @@
                             </div>
                         </div>
                         <!-- 출처 정보 -->
-                        <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center gap-1 text-xs text-slate-400">
-                            <button id="weather-source-info" class="flex items-center gap-1 hover:text-primary transition-colors cursor-pointer" title="출처 정보">
+                        <div
+                            class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center gap-1 text-xs text-slate-400">
+                            <button id="weather-source-info"
+                                class="flex items-center gap-1 hover:text-primary transition-colors cursor-pointer"
+                                title="출처 정보">
                                 <span class="material-symbols-outlined text-sm">info</span>
                                 <span>출처</span>
                             </button>
                         </div>
                         <!-- 출처 정보 팝업 -->
-                        <div id="weather-source-popup" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                        <div id="weather-source-popup"
+                            class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                             <div class="bg-card-light dark:bg-card-dark rounded-xl shadow-xl max-w-md w-full p-6">
                                 <div class="flex justify-between items-center mb-4">
                                     <h4 class="font-bold text-lg flex items-center gap-2">
                                         <span class="material-symbols-outlined text-primary">info</span>
                                         날씨 정보 출처
                                     </h4>
-                                    <button id="weather-source-close" class="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                                    <button id="weather-source-close"
+                                        class="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
                                         <span class="material-symbols-outlined">close</span>
                                     </button>
                                 </div>
@@ -534,14 +568,16 @@
                                         </div>
                                     </div>
                                     <div class="flex items-start gap-2">
-                                        <span class="material-symbols-outlined text-primary text-lg mt-0.5">wb_sunny</span>
+                                        <span
+                                            class="material-symbols-outlined text-primary text-lg mt-0.5">wb_sunny</span>
                                         <div>
                                             <p class="font-medium mb-1">일출/일몰 시각</p>
                                             <p class="text-xs text-slate-500">천문 계산식 기반 (위도 37.5°N 기준)</p>
                                         </div>
                                     </div>
                                     <div class="flex items-start gap-2">
-                                        <span class="material-symbols-outlined text-primary text-lg mt-0.5">health_and_safety</span>
+                                        <span
+                                            class="material-symbols-outlined text-primary text-lg mt-0.5">health_and_safety</span>
                                         <div>
                                             <p class="font-medium mb-1">기상청 생활기상지수 API</p>
                                             <p class="text-xs text-slate-500">자외선, 식중독, 대기확산, 체감온도 등</p>
@@ -551,20 +587,26 @@
                             </div>
                         </div>
                         <!-- 지역 설정 모달 -->
-                        <div id="weather-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                            <div class="bg-card-light dark:bg-card-dark rounded-xl shadow-xl max-w-md w-full max-h-[80vh] overflow-hidden">
-                                <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                        <div id="weather-modal"
+                            class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                            <div
+                                class="bg-card-light dark:bg-card-dark rounded-xl shadow-xl max-w-md w-full max-h-[80vh] overflow-hidden">
+                                <div
+                                    class="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
                                     <h4 class="font-bold text-lg">📍 자주 찾는 지역 설정</h4>
-                                    <button id="weather-modal-close" class="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                                    <button id="weather-modal-close"
+                                        class="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
                                         <span class="material-symbols-outlined">close</span>
                                     </button>
                                 </div>
                                 <div class="p-4 space-y-4">
                                     <!-- 동 검색 -->
                                     <div class="relative">
-                                        <input id="weather-search-input" type="text" placeholder="동 이름 검색 (예: 역삼동, 서초동...)"
+                                        <input id="weather-search-input" type="text"
+                                            placeholder="동 이름 검색 (예: 역삼동, 서초동...)"
                                             class="w-full bg-background-light dark:bg-[#111822] border border-slate-200 dark:border-slate-700 rounded-lg text-sm px-4 py-2.5 pr-10 focus:ring-2 focus:ring-primary/50 focus:border-primary" />
-                                        <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                                        <span
+                                            class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
                                     </div>
                                     <!-- 검색 결과 -->
                                     <div id="weather-search-results" class="max-h-40 overflow-y-auto space-y-1 hidden">
@@ -584,12 +626,15 @@
 
                     <!-- Memo Card -->
                     <div id="memo"
-                        class="card group relative col-span-1 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
+                        class="card group relative col-span-1 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
                         <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm font-semibold text-slate-700">빠른 메모</span>
+                            <span
+                                class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-lg text-primary">edit_note</span>빠른 메모
+                            </span>
                         </div>
                         <textarea id="memo-text"
-                            class="w-full flex-1 bg-transparent border-none text-sm text-slate-600 dark:text-slate-300 placeholder-slate-400 resize-none focus:ring-0 p-0 leading-relaxed min-h-[120px]"
+                            class="w-full flex-1 bg-transparent border-none text-sm text-slate-600 dark:text-slate-300 placeholder-slate-400 resize-none focus:ring-0 p-0 leading-relaxed min-h-[200px]"
                             placeholder="메모를 입력하세요..."></textarea>
                     </div>
 
@@ -605,7 +650,8 @@
                             <input id="todo-input"
                                 class="flex-1 bg-transparent border-none text-sm px-0 py-1 focus:ring-0 placeholder-slate-400"
                                 placeholder="목록 항목 추가" type="text" />
-                            <button id="todo-add" class="text-primary hover:bg-primary/10 p-1.5 rounded-full transition-colors">
+                            <button id="todo-add"
+                                class="text-primary hover:bg-primary/10 p-1.5 rounded-full transition-colors">
                                 <span class="material-symbols-outlined text-lg">send</span>
                             </button>
                         </div>
@@ -675,6 +721,24 @@
                                     class="material-symbols-outlined text-lg">speed</span></button>
                         </div>
                         <div id="converter-content" class="flex flex-col gap-3"></div>
+                    </div>
+
+                    <!-- Finance Card -->
+                    <div id="finance"
+                        class="card group relative col-span-1 lg:col-span-2 row-span-2 bg-card-light dark:bg-card-dark rounded-lg shadow-soft dark:shadow-soft-dark border border-slate-100 dark:border-slate-800 p-6 flex flex-col gap-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-bold flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary">savings</span>금융 계산기
+                            </h3>
+                            <div class="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+                                <button id="finance-interest"
+                                    class="px-3 py-1 text-xs font-bold bg-white dark:bg-card-dark rounded shadow-sm">이자
+                                    계산</button>
+                                <button id="finance-discount" class="px-3 py-1 text-xs font-medium text-slate-500">할인
+                                    계산</button>
+                            </div>
+                        </div>
+                        <div id="finance-content" class="flex flex-col md:flex-row gap-6"></div>
                     </div>
 
                     <!-- Dictionary Card -->
