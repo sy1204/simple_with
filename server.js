@@ -34,6 +34,7 @@ const KOREAN_DICT_API_KEY = process.env.KOREAN_DICT_API_KEY;
 const NAVER_CLIENT_ID = process.env.NAVER_CLIENT_ID;
 const NAVER_CLIENT_SECRET = process.env.NAVER_CLIENT_SECRET;
 const KMA_API_KEY = process.env.KMA_API_KEY;
+const DATA_GO_KR_API_KEY = process.env.DATA_GO_KR_API_KEY;
 
 const MIME_TYPES = {
     '.html': 'text/html; charset=utf-8',
@@ -531,6 +532,135 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // ===== 미세먼지 API (에어코리아) =====
+    if (pathname === '/api/airquality') {
+        if (!DATA_GO_KR_API_KEY) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: { code: 'NO_API_KEY', message: 'DATA_GO_KR_API_KEY가 설정되지 않았습니다.' } }));
+            return;
+        }
+
+        const { stationName, sidoName } = parsedUrl.query;
+        
+        let apiUrl;
+        if (stationName) {
+            apiUrl = `http://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty?serviceKey=${DATA_GO_KR_API_KEY}&returnType=json&numOfRows=1&pageNo=1&stationName=${encodeURIComponent(stationName)}&dataTerm=DAILY&ver=1.0`;
+        } else if (sidoName) {
+            apiUrl = `http://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getCtprvnRltmMesureDnsty?serviceKey=${DATA_GO_KR_API_KEY}&returnType=json&numOfRows=100&pageNo=1&sidoName=${encodeURIComponent(sidoName)}&ver=1.0`;
+        } else {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: { code: 'MISSING_PARAM', message: 'stationName 또는 sidoName 필요' } }));
+            return;
+        }
+
+        try {
+            console.log(`[AirQuality] Fetching: ${apiUrl.replace(DATA_GO_KR_API_KEY, 'HIDDEN')}`);
+            const apiResponse = await fetch(apiUrl);
+            const data = await apiResponse.json();
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(data));
+        } catch (error) {
+            console.error('[AirQuality] Error:', error);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: { code: 'SERVER_ERROR', message: error.message } }));
+        }
+        return;
+    }
+
+    // ===== 생활기상지수 API =====
+    if (pathname === '/api/livingindex') {
+        if (!DATA_GO_KR_API_KEY) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: { code: 'NO_API_KEY', message: 'DATA_GO_KR_API_KEY가 설정되지 않았습니다.' } }));
+            return;
+        }
+
+        const { type, areaNo, time } = parsedUrl.query;
+        
+        if (!type || !areaNo || !time) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: { code: 'MISSING_PARAM', message: 'type, areaNo, time 파라미터 필요' } }));
+            return;
+        }
+
+        const endpoints = {
+            UV: 'getUVIdx', fsn: 'getFsnIdx', sensorytem: 'getSensorytemIdx',
+            frostbite: 'getFrostbiteIdx', heat: 'getHeatFeelingIdx',
+            discomfort: 'getDiscomfortIdx', airDiffusion: 'getAirDiffusionIdx'
+        };
+        const endpoint = endpoints[type];
+        
+        if (!endpoint) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: { code: 'INVALID_TYPE', message: `유효하지 않은 type: ${type}` } }));
+            return;
+        }
+
+        const apiUrl = `http://apis.data.go.kr/1360000/LivingWthrIdxServiceV4/${endpoint}?serviceKey=${DATA_GO_KR_API_KEY}&numOfRows=10&pageNo=1&dataType=JSON&areaNo=${areaNo}&time=${time}`;
+
+        try {
+            console.log(`[LivingIndex] Fetching: ${apiUrl.replace(DATA_GO_KR_API_KEY, 'HIDDEN')}`);
+            const apiResponse = await fetch(apiUrl);
+            const data = await apiResponse.json();
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(data));
+        } catch (error) {
+            console.error('[LivingIndex] Error:', error);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: { code: 'SERVER_ERROR', message: error.message } }));
+        }
+        return;
+    }
+
+    // ===== 일출/일몰 API =====
+    if (pathname === '/api/sunriseset') {
+        if (!DATA_GO_KR_API_KEY) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: { code: 'NO_API_KEY', message: 'DATA_GO_KR_API_KEY가 설정되지 않았습니다.' } }));
+            return;
+        }
+
+        const { locdate, location } = parsedUrl.query;
+        
+        if (!locdate) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: { code: 'MISSING_PARAM', message: 'locdate 파라미터 필요 (YYYYMMDD)' } }));
+            return;
+        }
+
+        let apiUrl = `http://apis.data.go.kr/B090041/openapi/service/RiseSetInfoService/getLCRiseSetInfo?serviceKey=${DATA_GO_KR_API_KEY}&locdate=${locdate}&dnYn=Y`;
+        if (location) apiUrl += `&location=${encodeURIComponent(location)}`;
+
+        try {
+            console.log(`[SunRiseSet] Fetching: ${apiUrl.replace(DATA_GO_KR_API_KEY, 'HIDDEN')}`);
+            const apiResponse = await fetch(apiUrl);
+            const text = await apiResponse.text();
+            
+            // XML 파싱
+            const parseXml = (xml, tag) => {
+                const match = xml.match(new RegExp(`<${tag}>([^<]*)</${tag}>`));
+                return match ? match[1].trim() : null;
+            };
+            
+            const data = {
+                location: parseXml(text, 'location') || location,
+                locdate: parseXml(text, 'locdate') || locdate,
+                sunrise: parseXml(text, 'sunrise'),
+                sunset: parseXml(text, 'sunset'),
+                moonrise: parseXml(text, 'moonrise'),
+                moonset: parseXml(text, 'moonset')
+            };
+
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ response: { body: { items: { item: data } } } }));
+        } catch (error) {
+            console.error('[SunRiseSet] Error:', error);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: { code: 'SERVER_ERROR', message: error.message } }));
+        }
+        return;
+    }
+
     // 정적 파일 서빙
     let filePath = pathname === '/' ? '/index.html' : pathname;
 
@@ -574,8 +704,12 @@ server.listen(PORT, () => {
     console.log(`   - 번역: /api/translate?text=hello&source=en&target=ko`);
     console.log(`   - 날씨: /api/weather?nx=60&ny=127&type=ultra`);
     console.log(`   - 장소검색: /api/place?q=강남역 맛집`);
+    console.log(`   - 미세먼지: /api/airquality?sidoName=서울`);
+    console.log(`   - 생활지수: /api/livingindex?type=UV&areaNo=1100000000&time=2024010106`);
+    console.log(`   - 일출일몰: /api/sunriseset?locdate=20240101&location=서울`);
     console.log(`\n🔑 API 키 상태:`);
     console.log(`   - 국어사전: ${KOREAN_DICT_API_KEY ? '✓ 설정됨' : '❌ 미설정'}`);
     console.log(`   - 네이버: ${NAVER_CLIENT_ID ? '✓ 설정됨' : '❌ 미설정'}`);
-    console.log(`   - 기상청: ${KMA_API_KEY ? '✓ 설정됨' : '❌ 미설정'}\n`);
+    console.log(`   - 기상청: ${KMA_API_KEY ? '✓ 설정됨' : '❌ 미설정'}`);
+    console.log(`   - 공공데이터: ${DATA_GO_KR_API_KEY ? '✓ 설정됨' : '❌ 미설정'}\n`);
 });

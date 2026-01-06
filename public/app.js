@@ -1986,6 +1986,30 @@
         currentIdx: Storage.get('weatherCurrentIdx', 0),
         data: null,
         midForecast: null, // 중기예보 데이터
+        airQuality: null,  // 미세먼지 데이터
+        livingIndex: null, // 생활기상지수 데이터
+        sunRiseSet: null,  // 일출/일몰 데이터
+
+        // 시도명/지역코드 매핑 (미세먼지, 생활기상지수, 일출일몰용)
+        areaMapping: {
+            '서울': { sidoName: '서울', areaNo: '1100000000', location: '서울' },
+            '부산': { sidoName: '부산', areaNo: '2600000000', location: '부산' },
+            '대구': { sidoName: '대구', areaNo: '2700000000', location: '대구' },
+            '인천': { sidoName: '인천', areaNo: '2800000000', location: '인천' },
+            '광주': { sidoName: '광주', areaNo: '2900000000', location: '광주' },
+            '대전': { sidoName: '대전', areaNo: '3000000000', location: '대전' },
+            '울산': { sidoName: '울산', areaNo: '3100000000', location: '울산' },
+            '세종': { sidoName: '세종', areaNo: '3600000000', location: '세종' },
+            '경기': { sidoName: '경기', areaNo: '4100000000', location: '수원' },
+            '강원': { sidoName: '강원', areaNo: '4200000000', location: '춘천' },
+            '충북': { sidoName: '충북', areaNo: '4300000000', location: '청주' },
+            '충남': { sidoName: '충남', areaNo: '4400000000', location: '대전' },
+            '전북': { sidoName: '전북', areaNo: '4500000000', location: '전주' },
+            '전남': { sidoName: '전남', areaNo: '4600000000', location: '광주' },
+            '경북': { sidoName: '경북', areaNo: '4700000000', location: '대구' },
+            '경남': { sidoName: '경남', areaNo: '4800000000', location: '부산' },
+            '제주': { sidoName: '제주', areaNo: '5000000000', location: '제주' },
+        },
 
         // 중기예보 지역 코드 매핑
         regionCodes: {
@@ -2351,6 +2375,13 @@
 
             const loc = this.currentLocation;
             const regionCode = this.getRegionCode(loc.name);
+            const areaInfo = this.getAreaInfo(loc.name);
+
+            // 오늘 날짜 (YYYYMMDD 형식)
+            const now = new Date();
+            const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+            const today = kst.toISOString().slice(0, 10).replace(/-/g, '');
+            const currentHour = String(kst.getUTCHours()).padStart(2, '0');
 
             container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-400 py-8">
                 <span class="material-symbols-outlined text-4xl mb-2 animate-pulse">cloud_sync</span>
@@ -2358,16 +2389,20 @@
             </div>`;
 
             try {
-                // 현재 날씨 + 단기예보 + 중기예보 동시 요청
-                const [currentRes, forecastRes, midRes] = await Promise.all([
+                // 기본 날씨 + 생활정보 동시 요청
+                const [currentRes, forecastRes, midRes, airRes, sunRes] = await Promise.all([
                     fetch(`/api/weather?nx=${loc.nx}&ny=${loc.ny}&type=ultra`),
                     fetch(`/api/weather?nx=${loc.nx}&ny=${loc.ny}&type=short`),
-                    fetch(`/api/midforecast?regId=${regionCode.regId}&stnId=${regionCode.stnId}`)
+                    fetch(`/api/midforecast?regId=${regionCode.regId}&stnId=${regionCode.stnId}`),
+                    fetch(`/api/airquality?sidoName=${encodeURIComponent(areaInfo.sidoName)}`),
+                    fetch(`/api/sunriseset?locdate=${today}&location=${encodeURIComponent(areaInfo.location)}`)
                 ]);
 
                 const currentData = await currentRes.json();
                 const forecastData = await forecastRes.json();
                 const midData = await midRes.json();
+                const airData = await airRes.json();
+                const sunData = await sunRes.json();
 
                 if (currentData.error) {
                     this.showError(currentData.error.message);
@@ -2376,21 +2411,137 @@
 
                 this.data = this.parseCurrentWeather(currentData);
                 this.forecast = forecastData.error ? { hourly: [], daily: [] } : this.parseForecast(forecastData);
-                // 중기예보 파싱 및 에러 확인
+                
+                // 중기예보 파싱
                 if (midData.error) {
                     console.error('[Weather] Mid forecast error:', midData.error.message);
                     this.midForecast = [];
                 } else {
                     this.midForecast = this.parseMidForecast(midData);
                 }
-                console.log('[Weather] Combined status:', {
+
+                // 미세먼지 파싱
+                this.airQuality = this.parseAirQuality(airData);
+                
+                // 일출/일몰 파싱
+                this.sunRiseSet = this.parseSunRiseSet(sunData);
+
+                // 생활기상지수 요청 (별도로 - 계절에 따라 다른 지수)
+                await this.loadLivingIndex(areaInfo.areaNo, today + currentHour);
+
+                console.log('[Weather] All data loaded:', {
                     shortDays: this.forecast.daily?.length || 0,
-                    midDays: this.midForecast?.length || 0
+                    midDays: this.midForecast?.length || 0,
+                    airQuality: this.airQuality ? 'OK' : 'N/A',
+                    sunRiseSet: this.sunRiseSet ? 'OK' : 'N/A',
+                    livingIndex: this.livingIndex ? 'OK' : 'N/A'
                 });
+                
                 this.render();
             } catch (error) {
+                console.error('[Weather] Load error:', error);
                 this.showError('날씨 정보를 불러올 수 없습니다: ' + error.message);
             }
+        },
+
+        // 생활기상지수 로드 (계절에 따라 다른 지수 요청)
+        async loadLivingIndex(areaNo, time) {
+            const month = new Date().getMonth() + 1;
+            const indices = {};
+
+            try {
+                // 자외선 지수 (연중)
+                const uvRes = await fetch(`/api/livingindex?type=UV&areaNo=${areaNo}&time=${time}`);
+                const uvData = await uvRes.json();
+                if (!uvData.error) {
+                    const item = uvData.response?.body?.items?.item?.[0];
+                    if (item) indices.UV = item.h0 || item.h3 || item.today;
+                }
+
+                // 식중독 지수 (3월~11월)
+                if (month >= 3 && month <= 11) {
+                    const fsnRes = await fetch(`/api/livingindex?type=fsn&areaNo=${areaNo}&time=${time}`);
+                    const fsnData = await fsnRes.json();
+                    if (!fsnData.error) {
+                        const item = fsnData.response?.body?.items?.item?.[0];
+                        if (item) indices.fsn = item.h0 || item.h3 || item.today;
+                    }
+                }
+
+                // 대기확산지수 (연중)
+                const airDiffRes = await fetch(`/api/livingindex?type=airDiffusion&areaNo=${areaNo}&time=${time}`);
+                const airDiffData = await airDiffRes.json();
+                if (!airDiffData.error) {
+                    const item = airDiffData.response?.body?.items?.item?.[0];
+                    if (item) indices.airDiffusion = item.h0 || item.h3 || item.today;
+                }
+
+            } catch (error) {
+                console.error('[Weather] Living index error:', error);
+            }
+
+            this.livingIndex = Object.keys(indices).length > 0 ? indices : null;
+        },
+
+        // 미세먼지 데이터 파싱
+        parseAirQuality(data) {
+            const items = data.response?.body?.items;
+            if (!items || items.length === 0) return null;
+            
+            const item = items[0];
+            return {
+                pm10: item.pm10Value,
+                pm25: item.pm25Value,
+                pm10Grade: item.pm10Grade,
+                pm25Grade: item.pm25Grade,
+                khaiValue: item.khaiValue,
+                khaiGrade: item.khaiGrade,
+                stationName: item.stationName,
+                dataTime: item.dataTime
+            };
+        },
+
+        // 일출/일몰 데이터 파싱
+        parseSunRiseSet(data) {
+            const item = data.response?.body?.items?.item;
+            if (!item) return null;
+            
+            return {
+                sunrise: item.sunrise ? item.sunrise.trim() : null,
+                sunset: item.sunset ? item.sunset.trim() : null,
+                location: item.location
+            };
+        },
+
+        // 미세먼지 등급 텍스트
+        getAirGradeText(grade) {
+            const grades = { '1': '좋음', '2': '보통', '3': '나쁨', '4': '매우나쁨' };
+            return grades[grade] || '-';
+        },
+
+        // 미세먼지 등급 색상
+        getAirGradeColor(grade) {
+            const colors = { '1': '🟢', '2': '🟡', '3': '🟠', '4': '🔴' };
+            return colors[grade] || '⚪';
+        },
+
+        // 자외선 지수 텍스트
+        getUVText(value) {
+            const v = parseInt(value);
+            if (v <= 2) return '낮음';
+            if (v <= 5) return '보통';
+            if (v <= 7) return '높음';
+            if (v <= 10) return '매우높음';
+            return '위험';
+        },
+
+        // 식중독 지수 텍스트
+        getFsnText(value) {
+            const v = parseInt(value);
+            if (v <= 55) return '낮음';
+            if (v <= 70) return '보통';
+            if (v <= 85) return '높음';
+            return '매우높음';
         },
 
         // 지역명에서 중기예보 지역 코드 찾기
@@ -2402,6 +2553,17 @@
             }
             // 기본값: 서울
             return { regId: '11B00000', stnId: '108' };
+        },
+
+        // 지역명에서 미세먼지/생활지수/일출일몰용 지역 정보 찾기
+        getAreaInfo(name) {
+            for (const [key, value] of Object.entries(this.areaMapping)) {
+                if (name.includes(key)) {
+                    return value;
+                }
+            }
+            // 기본값: 서울
+            return { sidoName: '서울', areaNo: '1100000000', location: '서울' };
         },
 
         // 중기예보 파싱
@@ -2736,6 +2898,59 @@
                 `;
             }
 
+            // 미세먼지 정보 HTML
+            let airHtml = '';
+            if (this.airQuality) {
+                const pm10 = this.airQuality.pm10 || '-';
+                const pm25 = this.airQuality.pm25 || '-';
+                const pm10Grade = this.getAirGradeColor(this.airQuality.pm10Grade);
+                const pm25Grade = this.getAirGradeColor(this.airQuality.pm25Grade);
+                const pm10Text = this.getAirGradeText(this.airQuality.pm10Grade);
+                const pm25Text = this.getAirGradeText(this.airQuality.pm25Grade);
+                
+                airHtml = `
+                    <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <div class="flex items-center justify-around">
+                            <div class="text-center">
+                                <p class="text-[10px] text-slate-400 mb-1">미세먼지</p>
+                                <p class="text-sm font-bold">${pm10Grade} ${pm10Text}</p>
+                                <p class="text-[10px] text-slate-500">${pm10}㎍/㎥</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-[10px] text-slate-400 mb-1">초미세먼지</p>
+                                <p class="text-sm font-bold">${pm25Grade} ${pm25Text}</p>
+                                <p class="text-[10px] text-slate-500">${pm25}㎍/㎥</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 생활지수 + 일출일몰 HTML
+            let lifeHtml = '';
+            const lifeItems = [];
+            
+            if (this.livingIndex?.UV) {
+                lifeItems.push(`<span class="text-xs">☀️ 자외선 ${this.getUVText(this.livingIndex.UV)}</span>`);
+            }
+            if (this.livingIndex?.fsn) {
+                lifeItems.push(`<span class="text-xs">🍱 식중독 ${this.getFsnText(this.livingIndex.fsn)}</span>`);
+            }
+            if (this.sunRiseSet) {
+                const sunrise = this.sunRiseSet.sunrise ? this.sunRiseSet.sunrise.slice(0, 2) + ':' + this.sunRiseSet.sunrise.slice(2, 4) : '-';
+                const sunset = this.sunRiseSet.sunset ? this.sunRiseSet.sunset.slice(0, 2) + ':' + this.sunRiseSet.sunset.slice(2, 4) : '-';
+                lifeItems.push(`<span class="text-xs">🌅 ${sunrise}</span>`);
+                lifeItems.push(`<span class="text-xs">🌇 ${sunset}</span>`);
+            }
+            
+            if (lifeItems.length > 0) {
+                lifeHtml = `
+                    <div class="mt-2 flex flex-wrap justify-center gap-3 text-slate-600 dark:text-slate-400">
+                        ${lifeItems.join('')}
+                    </div>
+                `;
+            }
+
             container.innerHTML = `
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-4">
@@ -2762,6 +2977,8 @@
                         </div>
                     </div>
                 </div>
+                ${airHtml}
+                ${lifeHtml}
                 <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400 text-center">
                     ${loc.name} · ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 기준
                 </div>
