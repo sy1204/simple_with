@@ -3319,11 +3319,11 @@
 
                     if (edge === 'right' || edge === 'left') {
                         const increment = edge === 'right' ? 1 : -1;
-                        const newColSpan = Math.max(1, Math.min(4, startSpan + Math.floor(delta / 200) * increment));
+                        const newColSpan = Math.max(1, Math.min(4, startSpan + Math.floor(delta / 100) * increment));
                         this.updateWidgetSize(card, newColSpan, startRowSpan);
                     } else {
                         const increment = edge === 'bottom' ? 1 : -1;
-                        const newRowSpan = Math.max(1, Math.min(3, startRowSpan + Math.floor(delta / 150) * increment));
+                        const newRowSpan = Math.max(1, Math.min(3, startRowSpan + Math.floor(delta / 75) * increment));
                         this.updateWidgetSize(card, startSpan, newRowSpan);
                     }
                 };
@@ -3464,17 +3464,28 @@
             this.draggedElement.style.left = `${clientX - rect.width / 2}px`;
             this.draggedElement.style.top = `${clientY - rect.height / 2}px`;
 
-            // 드롭 위치 찾기
-            const afterElement = this.getDragAfterElement(clientY);
+            // 드롭 위치 찾기 (더 정확한 위치 계산)
+            const afterElement = this.getDragAfterElement(clientX, clientY);
             const container = document.querySelector('.grid');
 
-            if (this.placeholder) {
+            if (this.placeholder && afterElement !== this.placeholderAfter) {
+                this.placeholderAfter = afterElement;
+
                 if (afterElement == null) {
                     container.appendChild(this.placeholder);
                 } else {
                     container.insertBefore(this.placeholder, afterElement);
                 }
+
+                // 다른 위젯들이 자동으로 재배치됨 (CSS Grid auto-flow)
+                this.updateGridLayout();
             }
+        },
+
+        updateGridLayout() {
+            // CSS Grid가 자동으로 레이아웃을 조정하므로
+            // 명시적인 위치 업데이트는 필요 없음
+            // 필요시 여기서 충돌 감지 및 해결 로직 추가 가능
         },
 
         handleTouchMove(e) {
@@ -3529,20 +3540,33 @@
             this.handleDragEnd(e);
         },
 
-        getDragAfterElement(y) {
+        getDragAfterElement(x, y) {
             const container = document.querySelector('.grid');
             const draggableElements = [...container.querySelectorAll('.card:not(.dragging), .widget-placeholder')];
 
+            // 그리드 레이아웃에서 가장 가까운 위치 찾기
             return draggableElements.reduce((closest, child) => {
                 const box = child.getBoundingClientRect();
-                const offset = y - box.top - box.height / 2;
 
-                if (offset < 0 && offset > closest.offset) {
-                    return { offset: offset, element: child };
+                // 요소의 중심점 계산
+                const childCenterX = box.left + box.width / 2;
+                const childCenterY = box.top + box.height / 2;
+
+                // 커서와 요소 중심 사이의 거리 계산
+                const distance = Math.sqrt(
+                    Math.pow(x - childCenterX, 2) +
+                    Math.pow(y - childCenterY, 2)
+                );
+
+                // 커서가 요소 위쪽에 있는지 확인 (위쪽에 있으면 이 요소 앞에 삽입)
+                const isAbove = y < childCenterY;
+
+                if (isAbove && (closest.distance === null || distance < closest.distance)) {
+                    return { distance: distance, element: child };
                 } else {
                     return closest;
                 }
-            }, { offset: Number.NEGATIVE_INFINITY }).element;
+            }, { distance: null, element: null }).element;
         },
 
         saveLayout() {
