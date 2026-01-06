@@ -19,11 +19,15 @@ module.exports = async function handler(req, res) {
     const CLIENT_ID = process.env.NAVER_CLIENT_ID;
     const CLIENT_SECRET = process.env.NAVER_CLIENT_SECRET;
 
+    // 디버깅: 환경변수 확인
+    console.log('[Place] NAVER_CLIENT_ID exists:', !!CLIENT_ID);
+    console.log('[Place] NAVER_CLIENT_SECRET exists:', !!CLIENT_SECRET);
+
     if (!CLIENT_ID || !CLIENT_SECRET) {
         return res.status(200).json({
             error: {
                 code: 'CONFIG_ERROR',
-                message: 'Vercel에 네이버 API 키가 설정되지 않았습니다.'
+                message: 'Vercel에 네이버 API 키가 설정되지 않았습니다. (ID: ' + (CLIENT_ID ? '있음' : '없음') + ', Secret: ' + (CLIENT_SECRET ? '있음' : '없음') + ')'
             }
         });
     }

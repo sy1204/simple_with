@@ -303,7 +303,8 @@ const server = http.createServer(async (req, res) => {
                 ? 'getUltraSrtNcst'  // 초단기실황
                 : 'getVilageFcst';   // 단기예보
 
-            const apiUrl = `http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/${endpoint}?serviceKey=${encodeURIComponent(KMA_API_KEY)}&numOfRows=100&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}`;
+            // 공공데이터포털 API 키는 이미 인코딩되어 있으므로 그대로 사용
+            const apiUrl = `http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/${endpoint}?serviceKey=${KMA_API_KEY}&numOfRows=100&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}`;
             
             console.log(`[Weather] Fetching ${type}: ${baseDate} ${baseTime} (${nx}, ${ny})`);
 
