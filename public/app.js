@@ -2245,7 +2245,7 @@
                 });
             console.log('[Weather] Hourly forecasts:', hourly.length);
 
-            // 일별 (최저/최고 기온) - 모레부터 시작
+            // 일별 (최저/최고 기온) - 전체 (필터링은 getCombinedDailyForecast에서)
             const byDate = {};
             forecasts.forEach(f => {
                 if (!byDate[f.date]) {
@@ -2258,10 +2258,6 @@
                 if (f.POP) byDate[f.date].pop.push(parseInt(f.POP));
             });
 
-            // 모레(2일 후) 날짜 계산
-            const dayAfterTomorrow = new Date(kstNow.getTime() + 2 * 24 * 60 * 60 * 1000);
-            const startDate = dayAfterTomorrow.toISOString().slice(0, 10).replace(/-/g, '');
-
             const daily = Object.values(byDate)
                 .map(d => ({
                     date: d.date,
@@ -2270,9 +2266,10 @@
                     sky: d.sky.length ? d.sky[Math.floor(d.sky.length / 2)] : '1',
                     pop: d.pop.length ? Math.max(...d.pop) : 0
                 }))
-                .filter(d => d.min !== null && d.max !== null && d.date >= startDate)
-                .slice(0, 10);
+                .filter(d => d.min !== null && d.max !== null)
+                .sort((a, b) => a.date.localeCompare(b.date));
 
+            console.log('[Weather] Daily forecasts:', daily.length, daily.map(d => d.date));
             return { hourly, daily };
         },
 
@@ -2369,20 +2366,26 @@
             return skyIcons[sky] || 'sunny';
         },
 
-        // 단기예보 + 중기예보 합치기 (모레부터)
+        // 단기예보 + 중기예보 합치기 (모레부터 7일)
         getCombinedDailyForecast() {
             const result = [];
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            const now = new Date();
+            const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+            
+            // 오늘 날짜 (한국시간)
+            const todayDate = new Date(kstNow);
+            todayDate.setUTCHours(0, 0, 0, 0);
 
-            // 모레(+2일)부터 시작
-            for (let i = 2; i <= 12; i++) {
-                const targetDate = new Date(today);
-                targetDate.setDate(targetDate.getDate() + i);
-                const dateStr = targetDate.toISOString().slice(0, 10).replace(/-/g, '');
+            // 모레(+2일)부터 9일(+10일)까지 = 총 최대 9일
+            for (let i = 2; i <= 10; i++) {
+                const targetDate = new Date(todayDate);
+                targetDate.setUTCDate(targetDate.getUTCDate() + i);
+                const dateStr = `${targetDate.getUTCFullYear()}${String(targetDate.getUTCMonth() + 1).padStart(2, '0')}${String(targetDate.getUTCDate()).padStart(2, '0')}`;
                 
-                // 단기예보에서 찾기 (+3일까지)
-                if (i <= 3 && this.forecast?.daily) {
+                let found = false;
+                
+                // 단기예보에서 먼저 찾기 (더 정확함)
+                if (this.forecast?.daily?.length) {
                     const shortDay = this.forecast.daily.find(d => d.date === dateStr);
                     if (shortDay) {
                         result.push({
@@ -2393,12 +2396,12 @@
                             pop: shortDay.pop,
                             sky: shortDay.sky
                         });
-                        continue;
+                        found = true;
                     }
                 }
                 
-                // 중기예보에서 찾기 (+3일~+10일)
-                if (this.midForecast?.length) {
+                // 단기예보에 없으면 중기예보에서 찾기 (+3일~+10일)
+                if (!found && this.midForecast?.length && i >= 3) {
                     const midDay = this.midForecast.find(d => d.dayOffset === i);
                     if (midDay) {
                         result.push({
@@ -2413,6 +2416,7 @@
                 }
             }
 
+            console.log('[Weather] Combined daily:', result.length, result.map(r => r.dayName));
             return result;
         },
 
