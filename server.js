@@ -532,6 +532,53 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // ===== 주식 검색 API (Yahoo Finance Search) =====
+    if (pathname === '/api/stock-search') {
+        const { q } = parsedUrl.query;
+
+        if (!q || q.trim().length === 0) {
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ success: false, error: '검색어를 입력하세요' }));
+            return;
+        }
+
+        try {
+            const searchUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=20&newsCount=0&enableFuzzyQuery=false&quotesQueryId=tss_match_phrase_query&region=KR`;
+
+            const response = await fetch(searchUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('검색 실패');
+            }
+
+            const data = await response.json();
+            const quotes = data.quotes || [];
+
+            // 한국 주식만 필터링 (.KS = 코스피, .KQ = 코스닥)
+            const koreanStocks = quotes
+                .filter(quote => quote.symbol && (quote.symbol.endsWith('.KS') || quote.symbol.endsWith('.KQ')))
+                .map(quote => ({
+                    symbol: quote.symbol,
+                    shortSymbol: quote.symbol.replace(/\.(KS|KQ)$/, ''),
+                    name: quote.shortname || quote.longname || quote.symbol,
+                    market: quote.symbol.endsWith('.KS') ? 'KOSPI' : 'KOSDAQ',
+                    exchange: quote.exchange || (quote.symbol.endsWith('.KS') ? 'KRX' : 'KOE')
+                }));
+
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ success: true, data: koreanStocks }));
+        } catch (error) {
+            console.error('[Stock Search] Error:', error);
+            res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ success: false, error: '검색 중 오류가 발생했습니다' }));
+        }
+        return;
+    }
+
     // ===== 주식 정보 API (Yahoo Finance) =====
     if (pathname === '/api/stock') {
         const { symbol, type } = parsedUrl.query;

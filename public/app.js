@@ -1482,6 +1482,47 @@
                 searchInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.searchStock();
                 });
+
+                // 실시간 검색 제안 (auto-complete)
+                let searchTimeout;
+                searchInput.addEventListener('input', (e) => {
+                    const query = e.target.value.trim();
+
+                    // 입력 제거 시 리스트 숨김
+                    if (!query) {
+                        this.hideStockMatches();
+                        return;
+                    }
+
+                    // 6자리 숫자면 자동완성 안 함 (바로 검색 가능)
+                    if (/^\d{6}$/.test(query)) {
+                        this.hideStockMatches();
+                        return;
+                    }
+
+                    // 2글자 이상일 때만 검색
+                    if (query.length < 2) {
+                        this.hideStockMatches();
+                        return;
+                    }
+
+                    // Debounce: 300ms 후 검색
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(async () => {
+                        try {
+                            const response = await fetch(`/api/stock-search?q=${encodeURIComponent(query)}`);
+                            const result = await response.json();
+
+                            if (result.success && result.data && result.data.length > 0) {
+                                this.showStockMatchesFromAPI(query, result.data);
+                            } else {
+                                this.hideStockMatches();
+                            }
+                        } catch (error) {
+                            console.error('[Stock] 자동완성 오류:', error);
+                        }
+                    }, 300);
+                });
             }
         },
         calcInterest() {
@@ -1565,7 +1606,7 @@
             }
         },
 
-        // 개별 주식 검색
+        // 개별 주식 검색 (실시간 API 사용)
         async searchStock() {
             const input = document.getElementById('stock-search-input');
             let searchTerm = input.value.trim();
@@ -1576,59 +1617,55 @@
                 return;
             }
 
-            // 디버깅: 입력값 확인
-            console.log(`[Stock] 검색어 입력: "${searchTerm}" (길이: ${searchTerm.length}, 코드포인트: ${[...searchTerm].map(c => c.codePointAt(0).toString(16)).join(', ')})`);
+            console.log(`[Stock] 검색어 입력: "${searchTerm}"`);
 
-            // 종목명 → 종목코드 변환
+            // 종목 코드 또는 종목명
             let symbol = searchTerm;
+
+            // 6자리 숫자가 아니면 실시간 검색 API 호출
             if (!/^\d{6}$/.test(searchTerm)) {
-                // 숫자 6자리가 아니면 종목명으로 간주
-                // 1. 정확한 일치 먼저 확인 (대소문자 구분 없음)
-                const normalizedSearch = searchTerm.toLowerCase();
-                let exactMatch = null;
+                try {
+                    const searchResponse = await fetch(`/api/stock-search?q=${encodeURIComponent(searchTerm)}`);
+                    const searchResult = await searchResponse.json();
 
-                // 정확한 매칭 찾기 (대소문자 무시)
-                for (const [name, code] of Object.entries(this.stockMapping)) {
-                    if (name.toLowerCase() === normalizedSearch) {
-                        exactMatch = name;
-                        symbol = code;
-                        break;
-                    }
-                }
-
-                if (exactMatch) {
-                    console.log(`[Stock] 정확한 매칭 "${searchTerm}" → "${exactMatch}" (${symbol})`);
-                } else {
-                    // 2. 부분 일치 검색 (대소문자 무시)
-                    const matches = Object.keys(this.stockMapping).filter(name => {
-                        const nameLower = name.toLowerCase();
-                        return nameLower.includes(normalizedSearch) || normalizedSearch.includes(nameLower);
-                    });
-
-                    console.log(`[Stock] 부분 매칭 검색: "${searchTerm}" → ${matches.length}개 발견`);
-
-                    if (matches.length === 0) {
+                    if (!searchResult.success || !searchResult.data || searchResult.data.length === 0) {
                         // 검색 결과 없음 → 네이버 금융 검색 페이지로 안내
-                        console.log(`[Stock] 매칭 실패. stockMapping 키 샘플:`, Object.keys(this.stockMapping).slice(0, 10));
                         const confirmGo = confirm(`"${searchTerm}" 종목을 찾을 수 없습니다.\n\n네이버 금융에서 검색하시겠습니까?`);
                         if (confirmGo) {
                             window.open(`https://finance.naver.com/search/search.naver?query=${encodeURIComponent(searchTerm)}`, '_blank');
                         }
                         return;
-                    } else if (matches.length === 1) {
+                    }
+
+                    const matches = searchResult.data;
+                    console.log(`[Stock] 검색 결과: ${matches.length}개 발견`);
+
+                    if (matches.length === 1) {
                         // 정확히 1개 매칭 → 자동 선택
-                        symbol = this.stockMapping[matches[0]];
-                        console.log(`[Stock] 단일 매칭 "${searchTerm}" → "${matches[0]}" (${symbol})`);
+                        symbol = matches[0].shortSymbol;
+                        console.log(`[Stock] 단일 매칭: "${matches[0].name}" (${symbol})`);
                     } else {
                         // 여러 개 매칭 → 리스트로 표시
-                        this.showStockMatches(searchTerm, matches);
+                        this.showStockMatchesFromAPI(searchTerm, matches);
                         return;
                     }
+                } catch (error) {
+                    console.error('[Stock] 검색 API 오류:', error);
+                    alert('검색 중 오류가 발생했습니다');
+                    return;
                 }
             }
 
             // 매칭 리스트 숨기기 (검색 실행 시)
             this.hideStockMatches();
+
+            // 종목 정보 조회
+            this.loadStockDetail(symbol);
+        },
+
+        // 종목 상세 정보 조회
+        async loadStockDetail(symbol) {
+            const resultDiv = document.getElementById('stock-result');
 
             try {
                 const response = await fetch(`/api/stock?type=search&symbol=${encodeURIComponent(symbol)}`);
@@ -1639,19 +1676,9 @@
                     const changeClass = stock.change >= 0 ? 'text-red-500' : 'text-blue-500';
                     const sign = stock.change >= 0 ? '▲' : '▼';
 
-                    // 종목명 찾기 (매핑 테이블에서 역검색)
-                    let displayName = stock.name;
-                    const code = stock.symbol.replace(/\.(KS|KQ)$/, '');
-                    for (const [name, stockCode] of Object.entries(this.stockMapping)) {
-                        if (stockCode === code) {
-                            displayName = name;
-                            break;
-                        }
-                    }
-
                     const stockCode = stock.symbol.replace(/\.(KS|KQ)$/, '');
 
-                    document.getElementById('stock-name').textContent = displayName;
+                    document.getElementById('stock-name').textContent = stock.name;
                     document.getElementById('stock-code').textContent = stock.symbol;
                     document.getElementById('stock-market').textContent = stock.market;
                     document.getElementById('stock-price').textContent = stock.price.toLocaleString() + '원';
@@ -1761,8 +1788,8 @@
             ctx.fillText(minPrice.toLocaleString(), padding.left + 2, height - padding.bottom - 2);
         },
 
-        // 여러 개 매칭된 종목 리스트 표시
-        showStockMatches(searchTerm, matches) {
+        // 여러 개 매칭된 종목 리스트 표시 (API 응답 기반)
+        showStockMatchesFromAPI(searchTerm, matches) {
             const matchesDiv = document.getElementById('stock-matches');
             const matchesTitle = document.getElementById('stock-matches-title');
             const matchesList = document.getElementById('stock-matches-list');
@@ -1775,34 +1802,39 @@
             // 리스트 초기화 및 생성
             matchesList.innerHTML = '';
 
-            // 최대 10개만 표시
-            matches.slice(0, 10).forEach(name => {
+            // 최대 15개만 표시
+            matches.slice(0, 15).forEach(stock => {
                 const li = document.createElement('li');
                 li.className = 'px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors';
 
-                const code = this.stockMapping[name];
                 li.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm font-medium">${name}</span>
-                        <span class="text-xs text-slate-500">${code}</span>
+                    <div class="flex justify-between items-center gap-3">
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-medium truncate">${stock.name}</div>
+                            <div class="text-xs text-slate-500">${stock.market}</div>
+                        </div>
+                        <span class="text-xs text-slate-500 font-mono">${stock.shortSymbol}</span>
                     </div>
                 `;
 
-                // 클릭 시 해당 종목 검색
+                // 클릭 시 해당 종목 조회
                 li.addEventListener('click', () => {
+                    this.hideStockMatches();
+                    this.loadStockDetail(stock.shortSymbol);
+
+                    // 입력창에 종목명 표시
                     const input = document.getElementById('stock-search-input');
-                    input.value = name;
-                    this.searchStock();
+                    input.value = stock.name;
                 });
 
                 matchesList.appendChild(li);
             });
 
-            // 10개 이상이면 안내 메시지 추가
-            if (matches.length > 10) {
+            // 15개 이상이면 안내 메시지 추가
+            if (matches.length > 15) {
                 const moreInfo = document.createElement('div');
                 moreInfo.className = 'px-4 py-2 text-xs text-slate-400 text-center border-t border-slate-200 dark:border-slate-700';
-                moreInfo.textContent = `그 외 ${matches.length - 10}개 종목 (더 정확한 검색어를 입력하세요)`;
+                moreInfo.textContent = `그 외 ${matches.length - 15}개 종목 (더 정확한 검색어를 입력하세요)`;
                 matchesList.appendChild(moreInfo);
             }
 
