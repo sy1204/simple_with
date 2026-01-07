@@ -1231,12 +1231,12 @@
         periodUnit: 'year', // 'year' or 'month'
         stockData: null,    // 주식 데이터
 
-        // 주요 종목 매핑 테이블 (종목명 → 종목코드)
+        // 주요 종목 매핑 테이블 (종목명 → 종목코드) - 200개+
         stockMapping: {
-            // 시가총액 상위 종목들
+            // 시가총액 상위 + 주요 종목
             '삼성전자': '005930', 'SK하이닉스': '000660', 'LG에너지솔루션': '373220',
             '삼성바이오로직스': '207940', '현대차': '005380', '셀트리온': '068270',
-            'POSCO홀딩스': '005490', '기아': '000270', '삼성물산': '028260',
+            'POSCO홀딩스': '005490', 'POSCO': '005490', '기아': '000270', '삼성물산': '028260',
             'LG화학': '051910', 'NAVER': '035420', '네이버': '035420', '현대모비스': '012330',
             '삼성SDI': '006400', '카카오': '035720', 'SK이노베이션': '096770',
             '한국전력': '015760', 'KB금융': '105560', '신한지주': '055550',
@@ -1248,20 +1248,74 @@
             '아모레퍼시픽': '090430', 'LG생활건강': '051900', 'SK스퀘어': '402340',
             '두산에너빌리티': '034020', '한화에어로스페이스': '012450', 'CJ제일제당': '097950',
             '고려아연': '010130', '한국조선해양': '009540', '메리츠금융지주': '138040',
-            'S-Oil': '010950', '엔씨소프트': '036570', '현대건설': '000720',
-            '대한항공': '003490', 'KT': '030200', '삼성엔지니어링': '028050',
+            'S-Oil': '010950', '에쓰오일': '010950', '엔씨소프트': '036570', 'NC소프트': '036570',
+            '현대건설': '000720', '대한항공': '003490', 'KT': '030200', '삼성엔지니어링': '028050',
             '롯데케미칼': '011170', '한화': '000880', 'LG유플러스': '032640',
             '카카오뱅크': '323410', '펄어비스': '263750', '삼성중공업': '010140',
             '현대제철': '004020', 'SK바이오팜': '326030', '포스코인터내셔널': '047050',
             'DB손해보험': '005830', 'SK바이오사이언스': '302440', '삼성카드': '029780',
             '하나금융지주': '086790', '우리금융지주': '316140', '넷마블': '251270',
             '강원랜드': '035250', 'LG디스플레이': '034220', '코웨이': '021240',
-            '한국타이어앤테크놀로지': '161390', 'GS': '078930', '호텔신라': '008770',
+            '한국타이어앤테크놀로지': '161390', '한국타이어': '161390', 'GS': '078930', '호텔신라': '008770',
             '삼성증권': '016360', '카카오게임즈': '293490', '셀트리온헬스케어': '091990',
             '셀트리온제약': '068760', '미래에셋증권': '006800', '현대백화점': '069960',
-            'HD현대': '267250', 'SK케미칼': '285130', '삼성바이오에피스': '207940',
-            'BGF리테일': '282330', 'CJ': '001040', 'GS리테일': '007070',
-            '한화솔루션': '009830', '한국가스공사': '036460', '한국항공우주': '047810'
+            'HD현대': '267250', 'SK케미칼': '285130', 'BGF리테일': '282330',
+            'CJ': '001040', 'GS리테일': '007070', '한화솔루션': '009830',
+            '한국가스공사': '036460', '한국항공우주': '047810',
+            // 추가 주요 종목 (IT/게임/엔터)
+            '에코프로': '086520', '에코프로비엠': '247540', 'POSCO홀딩스': '005490',
+            '카카오페이': '377300', '두산밥캣': '241560', '천보': '278280',
+            '알테오젠': '196170', '위메이드': '112040', '컴투스': '078340',
+            '펄어비스': '263750', '데브시스터즈': '194480', '게임빌': '063080',
+            '넥슨게임즈': '225570', '엔씨소프트': '036570', '위지윅스튜디오': '299900',
+            // 바이오/제약
+            '셀트리온': '068270', '삼성바이오로직스': '207940', '셀트리온헬스케어': '091990',
+            '셀트리온제약': '068760', 'SK바이오팜': '326030', 'SK바이오사이언스': '302440',
+            '신라젠': '215600', '파미셀': '005690', '유한양행': '000100',
+            '녹십자': '006280', '종근당': '185750', '한미약품': '128940',
+            '대웅제약': '069620', '한올바이오파마': '009420', '씨젠': '096530',
+            // 금융
+            'KB금융': '105560', '신한지주': '055550', '하나금융지주': '086790',
+            '우리금융지주': '316140', 'JB금융지주': '175330', 'BNK금융지주': '138930',
+            'DGB금융지주': '139130', '메리츠금융지주': '138040', '삼성생명': '032830',
+            '삼성화재': '000810', 'DB손해보험': '005830', '삼성증권': '016360',
+            '미래에셋증권': '006800', 'NH투자증권': '005940', '한국금융지주': '071050',
+            // 유통/소비재
+            '롯데쇼핑': '023530', 'GS리테일': '007070', 'BGF리테일': '282330',
+            '이마트': '139480', '신세계': '004170', '현대백화점': '069960',
+            '롯데하이마트': '071840', '하이트진로': '000080', '오리온': '271560',
+            '농심': '004370', 'CJ제일제당': '097950', '삼양식품': '003230',
+            // 건설/부동산
+            '삼성물산': '028260', '현대건설': '000720', '대림산업': '000210',
+            'GS건설': '006360', '대우건설': '047040', '포스코이앤씨': '028050',
+            'DL이앤씨': '375500', 'HDC현대산업개발': '294870', '롯데건설': '000490',
+            // 화학/소재
+            'LG화학': '051910', 'SK이노베이션': '096770', 'S-Oil': '010950',
+            '롯데케미칼': '011170', '한화솔루션': '009830', '고려아연': '010130',
+            '영풍': '000670', 'LG생활건강': '051900', '아모레퍼시픽': '090430',
+            // 자동차/부품
+            '현대차': '005380', '기아': '000270', '현대모비스': '012330',
+            '현대위아': '011210', '만도': '204320', '현대트랜시스': '012330',
+            // 조선/기계
+            '한국조선해양': '009540', 'HD현대중공업': '329180', '삼성중공업': '010140',
+            'HD현대미포': '010620', '두산밥캣': '241560', '두산에너빌리티': '034020',
+            // 항공/운송
+            '대한항공': '003490', 'HMM': '011200', 'CJ대한통운': '000120',
+            '한진칼': '180640', '아시아나항공': '020560',
+            // 반도체/전자
+            '삼성전자': '005930', 'SK하이닉스': '000660', '삼성전기': '009150',
+            'LG전자': '066570', 'LG이노텍': '011070', '삼성SDI': '006400',
+            'DB하이텍': '000990', 'SK스퀘어': '402340',
+            // 2차전지/신재생
+            'LG에너지솔루션': '373220', '삼성SDI': '006400', '에코프로': '086520',
+            '에코프로비엠': '247540', '포스코퓨처엠': '003670', 'SK온': '000000',
+            // 통신
+            'SK텔레콤': '017670', 'KT': '030200', 'LG유플러스': '032640',
+            'SK브로드밴드': '033630',
+            // 기타 주요 종목
+            '한국전력': '015760', '한국가스공사': '036460', '한국전력공사': '015760',
+            'KEPCO': '015760', '코웨이': '021240', '쿠팡': '000000', // 쿠팡은 미국 상장
+            '배달의민족': '000000' // 비상장
         },
 
         init() {
@@ -1343,12 +1397,12 @@
                     <div class="flex-1 space-y-4">
                         <!-- 코스피/코스닥 지수 -->
                         <div id="stock-indexes" class="grid grid-cols-2 gap-3">
-                            <div class="bg-background-light dark:bg-[#111822] rounded-lg p-3 text-center">
+                            <div class="bg-background-light dark:bg-[#111822] rounded-lg p-3 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" onclick="window.open('https://finance.naver.com/sise/sise_index.naver?code=KOSPI', '_blank')">
                                 <p class="text-xs text-slate-400 mb-1">KOSPI</p>
                                 <p id="kospi-price" class="text-lg font-bold">-</p>
                                 <p id="kospi-change" class="text-xs">-</p>
                             </div>
-                            <div class="bg-background-light dark:bg-[#111822] rounded-lg p-3 text-center">
+                            <div class="bg-background-light dark:bg-[#111822] rounded-lg p-3 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" onclick="window.open('https://finance.naver.com/sise/sise_index.naver?code=KOSDAQ', '_blank')">
                                 <p class="text-xs text-slate-400 mb-1">KOSDAQ</p>
                                 <p id="kosdaq-price" class="text-lg font-bold">-</p>
                                 <p id="kosdaq-change" class="text-xs">-</p>
@@ -1378,6 +1432,10 @@
                                 <p id="stock-price" class="text-2xl font-bold mb-1">-</p>
                                 <p id="stock-change" class="text-sm">-</p>
                                 <p id="stock-prev" class="text-xs text-slate-400 mt-2">-</p>
+                                <a id="stock-naver-link" href="#" target="_blank" class="inline-flex items-center gap-1 mt-3 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-medium rounded-lg transition-colors">
+                                    <span class="material-symbols-outlined text-sm">open_in_new</span>
+                                    네이버 증권에서 상세보기
+                                </a>
                             </div>
                         </div>
                     </div>`;
@@ -1487,12 +1545,33 @@
             let symbol = searchTerm;
             if (!/^\d{6}$/.test(searchTerm)) {
                 // 숫자 6자리가 아니면 종목명으로 간주
+                // 1. 정확한 일치 먼저 확인
                 if (this.stockMapping[searchTerm]) {
                     symbol = this.stockMapping[searchTerm];
                     console.log(`[Stock] 종목명 "${searchTerm}" → 종목코드 "${symbol}"`);
                 } else {
-                    alert(`"${searchTerm}" 종목을 찾을 수 없습니다.\n\n주요 종목: 삼성전자, SK하이닉스, 네이버, 카카오 등`);
-                    return;
+                    // 2. 부분 일치 검색
+                    const matches = Object.keys(this.stockMapping).filter(name =>
+                        name.includes(searchTerm) || searchTerm.includes(name)
+                    );
+
+                    if (matches.length === 0) {
+                        // 검색 결과 없음 → 네이버 금융 검색 페이지로 안내
+                        const confirmGo = confirm(`"${searchTerm}" 종목을 찾을 수 없습니다.\n\n네이버 금융에서 검색하시겠습니까?`);
+                        if (confirmGo) {
+                            window.open(`https://finance.naver.com/search/search.naver?query=${encodeURIComponent(searchTerm)}`, '_blank');
+                        }
+                        return;
+                    } else if (matches.length === 1) {
+                        // 정확히 1개 매칭 → 자동 선택
+                        symbol = this.stockMapping[matches[0]];
+                        console.log(`[Stock] 부분 매칭 "${searchTerm}" → "${matches[0]}" (${symbol})`);
+                    } else {
+                        // 여러 개 매칭 → 사용자 선택
+                        const selected = matches.slice(0, 10).join('\n');
+                        alert(`"${searchTerm}" 검색 결과 (${matches.length}개):\n\n${selected}\n\n정확한 종목명을 입력하세요.`);
+                        return;
+                    }
                 }
             }
 
@@ -1515,12 +1594,24 @@
                         }
                     }
 
+                    const stockCode = stock.symbol.replace(/\.(KS|KQ)$/, '');
+
                     document.getElementById('stock-name').textContent = displayName;
                     document.getElementById('stock-code').textContent = stock.symbol;
                     document.getElementById('stock-market').textContent = stock.market;
                     document.getElementById('stock-price').textContent = stock.price.toLocaleString() + '원';
                     document.getElementById('stock-change').innerHTML = `<span class="${changeClass}">${sign} ${Math.abs(stock.change).toLocaleString()}원 (${sign}${Math.abs(stock.changePercent).toFixed(2)}%)</span>`;
                     document.getElementById('stock-prev').textContent = `전일 종가: ${stock.previousClose.toLocaleString()}원`;
+
+                    // 네이버 증권 링크 추가
+                    const naverLink = document.getElementById('stock-naver-link');
+                    if (naverLink) {
+                        naverLink.href = `https://finance.naver.com/item/main.naver?code=${stockCode}`;
+                        naverLink.onclick = (e) => {
+                            e.preventDefault();
+                            window.open(naverLink.href, '_blank', 'noopener,noreferrer');
+                        };
+                    }
 
                     resultDiv.classList.remove('hidden');
                 } else {
