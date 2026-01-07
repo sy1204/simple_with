@@ -532,7 +532,7 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    // ===== 주식 검색 API (Yahoo Finance Search) =====
+    // ===== 주식 검색 API (네이버 모바일 주식 API) =====
     if (pathname === '/api/stock-search') {
         const { q } = parsedUrl.query;
 
@@ -543,36 +543,38 @@ const server = http.createServer(async (req, res) => {
         }
 
         try {
-            const searchUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=20&newsCount=0&enableFuzzyQuery=false&quotesQueryId=tss_match_phrase_query&region=KR`;
+            const searchUrl = `https://m.stock.naver.com/api/search/stock?keyword=${encodeURIComponent(q)}`;
 
             const response = await fetch(searchUrl, {
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Referer': 'https://m.stock.naver.com/'
                 }
             });
 
-            console.log(`[Stock Search] Yahoo Finance response status: ${response.status}`);
+            console.log(`[Stock Search] Naver Mobile API response status: ${response.status}`);
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error(`[Stock Search] Yahoo Finance error: ${response.status} - ${errorText.substring(0, 200)}`);
+                console.error(`[Stock Search] Naver API error: ${response.status} - ${errorText.substring(0, 200)}`);
                 throw new Error(`검색 실패: ${response.status}`);
             }
 
             const data = await response.json();
-            const quotes = data.quotes || [];
 
-            // 한국 주식만 필터링 (.KS = 코스피, .KQ = 코스닥)
-            const koreanStocks = quotes
-                .filter(quote => quote.symbol && (quote.symbol.endsWith('.KS') || quote.symbol.endsWith('.KQ')))
-                .map(quote => ({
-                    symbol: quote.symbol,
-                    shortSymbol: quote.symbol.replace(/\.(KS|KQ)$/, ''),
-                    name: quote.shortname || quote.longname || quote.symbol,
-                    market: quote.symbol.endsWith('.KS') ? 'KOSPI' : 'KOSDAQ',
-                    exchange: quote.exchange || (quote.symbol.endsWith('.KS') ? 'KRX' : 'KOE')
-                }));
+            // 네이버 API 응답 형식: { stocks: [...] }
+            const stocks = data.stocks || [];
 
+            // 클라이언트가 기대하는 형식으로 변환
+            const koreanStocks = stocks.map(stock => ({
+                symbol: stock.stockCode ? `${stock.stockCode}.${stock.stockExchangeType === 'KOSPI' ? 'KS' : 'KQ'}` : '',
+                shortSymbol: stock.stockCode || '',
+                name: stock.stockName || '',
+                market: stock.stockExchangeType || 'KOSPI',
+                exchange: 'KRX'
+            }));
+
+            console.log(`[Stock Search] Found ${koreanStocks.length} stocks for "${q}"`);
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify({ success: true, data: koreanStocks }));
         } catch (error) {
@@ -628,99 +630,77 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
 
-            // 개별 주식 조회
+            // 개별 주식 조회 (네이버 모바일 API 사용)
             if (type === 'search' && symbol) {
-                let searchSymbol = symbol;
+                const stockCode = symbol.replace(/\.(KS|KQ)$/, '');
 
-                // 숫자만 입력된 경우 .KS 추가
-                if (/^\d{6}$/.test(symbol)) {
-                    searchSymbol = `${symbol}.KS`;
-                }
-
-                // 차트 데이터 (5분봉, 1일)
-                const response = await fetch(
-                    `https://query1.finance.yahoo.com/v8/finance/chart/${searchSymbol}?interval=5m&range=1d`,
+                // 1. 종목 상세 정보
+                const infoResponse = await fetch(
+                    `https://m.stock.naver.com/api/stock/${stockCode}/integration`,
                     {
                         headers: {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                            'Referer': 'https://m.stock.naver.com/'
                         }
                     }
                 );
 
-                if (!response.ok && searchSymbol.endsWith('.KS')) {
-                    // .KS 실패 시 .KQ 시도
-                    searchSymbol = symbol + '.KQ';
-                    const retryResponse = await fetch(
-                        `https://query1.finance.yahoo.com/v8/finance/chart/${searchSymbol}?interval=5m&range=1d`,
-                        {
-                            headers: {
-                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                            }
-                        }
-                    );
-
-                    if (!retryResponse.ok) {
-                        throw new Error('종목을 찾을 수 없습니다');
-                    }
-
-                    const data = await retryResponse.json();
-                    const result = data.chart.result[0];
-                    const quote = result.meta;
-
-                    // 차트 데이터 추출
-                    const timestamps = result.timestamp || [];
-                    const prices = result.indicators.quote[0].close || [];
-                    const chartData = timestamps.map((t, i) => ({
-                        time: t,
-                        price: prices[i]
-                    })).filter(d => d.price !== null);
-
-                    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-                    res.end(JSON.stringify({
-                        success: true,
-                        data: {
-                            symbol: searchSymbol,
-                            name: quote.symbol || searchSymbol,
-                            price: quote.regularMarketPrice || 0,
-                            change: quote.regularMarketPrice - quote.chartPreviousClose,
-                            changePercent: ((quote.regularMarketPrice - quote.chartPreviousClose) / quote.chartPreviousClose * 100),
-                            previousClose: quote.chartPreviousClose || 0,
-                            currency: quote.currency || 'KRW',
-                            market: '코스닥',
-                            chart: chartData
-                        }
-                    }));
-                    return;
-                }
-
-                if (!response.ok) {
+                if (!infoResponse.ok) {
                     throw new Error('종목을 찾을 수 없습니다');
                 }
 
-                const data = await response.json();
-                const result = data.chart.result[0];
-                const quote = result.meta;
+                const info = await infoResponse.json();
 
-                // 차트 데이터 추출
-                const timestamps = result.timestamp || [];
-                const prices = result.indicators.quote[0].close || [];
-                const chartData = timestamps.map((t, i) => ({
-                    time: t,
-                    price: prices[i]
-                })).filter(d => d.price !== null);
+                // 2. 차트 데이터 (일중 데이터)
+                const chartResponse = await fetch(
+                    `https://m.stock.naver.com/api/stock/${stockCode}/integration/chart/domestic/intraday`,
+                    {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                            'Referer': 'https://m.stock.naver.com/'
+                        }
+                    }
+                );
+
+                let chartData = [];
+                if (chartResponse.ok) {
+                    const chart = await chartResponse.json();
+                    // 네이버 차트 형식: [["HHmm", price], ...]
+                    chartData = (chart || []).map(item => {
+                        const timeStr = item[0]; // "0900" 형식
+                        const price = item[1];
+
+                        // 오늘 날짜의 해당 시간으로 변환
+                        const now = new Date();
+                        const hour = parseInt(timeStr.substring(0, 2));
+                        const minute = parseInt(timeStr.substring(2, 4));
+                        const timestamp = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute);
+
+                        return {
+                            time: Math.floor(timestamp.getTime() / 1000),
+                            price: price
+                        };
+                    }).filter(d => d.price !== null && d.price !== undefined);
+                }
+
+                // 종목명, 가격 정보
+                const stockName = info.stockName || stockCode;
+                const closePrice = info.dealTrendInfos?.[0]?.closePrice || 0;
+                const compareToPreviousClosePrice = info.dealTrendInfos?.[0]?.compareToPreviousClosePrice || 0;
+                const fluctuationsRatio = info.dealTrendInfos?.[0]?.fluctuationsRatio || 0;
 
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({
                     success: true,
                     data: {
-                        symbol: searchSymbol,
-                        name: quote.symbol || searchSymbol,
-                        price: quote.regularMarketPrice || 0,
-                        change: quote.regularMarketPrice - quote.chartPreviousClose,
-                        changePercent: ((quote.regularMarketPrice - quote.chartPreviousClose) / quote.chartPreviousClose * 100),
-                        previousClose: quote.chartPreviousClose || 0,
-                        currency: quote.currency || 'KRW',
-                        market: searchSymbol.endsWith('.KS') ? '코스피' : '코스닥',
+                        symbol: `${stockCode}.${info.marketType === 'KOSPI' ? 'KS' : 'KQ'}`,
+                        name: stockName,
+                        price: closePrice,
+                        change: compareToPreviousClosePrice,
+                        changePercent: fluctuationsRatio,
+                        previousClose: closePrice - compareToPreviousClosePrice,
+                        currency: 'KRW',
+                        market: info.marketType === 'KOSPI' ? '코스피' : '코스닥',
                         chart: chartData
                     }
                 }));
