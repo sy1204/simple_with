@@ -299,10 +299,10 @@
             grid-auto-flow: dense;
         }
 
-        /* 고정 단위 그리드 시스템 - 각 위젯이 독립적으로 높이 조절 가능 */
+        /* 유연한 그리드 시스템 - 각 위젯이 독립적으로 높이 조절 가능 */
         #main-content>.grid {
-            grid-auto-rows: 200px;
-            /* 기본 행 높이 단위 */
+            grid-auto-rows: minmax(200px, auto);
+            /* 최소 200px, 콘텐츠에 맞춰 자동 확장 */
             align-items: stretch;
         }
 
@@ -327,6 +327,18 @@
 
         .card.row-span-4 {
             min-height: 100%;
+        }
+
+        /* 메모, 할일, 계산기를 제외한 위젯들은 콘텐츠에 맞춰 자동 크기 조절 */
+        #time-widget, #calendar, #weather, #dictionary, #finance, #converter {
+            height: auto !important;
+            min-height: fit-content;
+        }
+
+        /* 메모, 할일, 계산기는 고정 높이 유지 (스크롤 허용) */
+        #memo, #todo, #calculator {
+            height: 100%;
+            max-height: 100%;
         }
 
         /* 데스크톱 레이아웃을 위한 위젯 순서 */
@@ -476,8 +488,7 @@
             <!-- Main Content -->
             <div id="main-content"
                 class="flex-1 overflow-y-auto p-4 lg:p-8 pt-28 md:pt-32 lg:pt-36 bg-background-light dark:bg-background-dark scroll-pt-28 md:scroll-pt-32 lg:scroll-pt-36">
-                <div class="max-w-[1600px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 pb-10"
-                    style="grid-auto-rows: 200px;">
+                <div class="max-w-[1600px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 pb-10">
 
                     <!-- 시간 위젯 (Time Widget) -->
                     <div id="time-widget"
@@ -527,7 +538,7 @@
                                     class="px-3 py-1 text-xs font-medium bg-primary text-white rounded-full hover:bg-blue-600 transition-colors">오늘</button>
                             </div>
                         </div>
-                        <div class="flex-1 flex flex-col overflow-y-auto" id="calendar-area">
+                        <div class="flex-1 flex flex-col" id="calendar-area">
                             <div id="calendar-container"></div>
                         </div>
                         <div id="holiday-list" class="text-xs text-slate-500 mt-2 min-h-[1rem] text-center"></div>
@@ -592,7 +603,7 @@
                                 </button>
                             </div>
                         </div>
-                        <div id="weather-content" class="flex-1 overflow-y-auto">
+                        <div id="weather-content" class="flex-1">
                             <div class="flex flex-col items-center justify-center h-full text-slate-400 py-8">
                                 <span class="material-symbols-outlined text-4xl mb-2 animate-pulse">cloud_sync</span>
                                 <p class="text-sm">날씨 정보를 불러오는 중...</p>
@@ -855,7 +866,7 @@
 
                         <!-- Results Area -->
                         <div id="dict-results"
-                            class="flex-1 min-h-[300px] bg-slate-50 dark:bg-slate-800/30 rounded-lg p-4 overflow-y-auto">
+                            class="flex-1 min-h-[300px] bg-slate-50 dark:bg-slate-800/30 rounded-lg p-4">
                             <div class="flex flex-col items-center justify-center h-full text-slate-400">
                                 <span class="material-symbols-outlined text-4xl mb-2">search</span>
                                 <p class="text-sm">검색어를 입력하고 검색 버튼을 누르세요</p>
