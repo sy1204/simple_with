@@ -854,7 +854,10 @@ const server = http.createServer(async (req, res) => {
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
     try {
-        const content = fs.readFileSync(filePath);
+        // 텍스트 파일은 UTF-8로 명시적으로 읽기
+        const textExtensions = ['.html', '.js', '.css', '.json', '.txt', '.md', '.xml', '.svg'];
+        const encoding = textExtensions.includes(ext) ? 'utf8' : null;
+        const content = fs.readFileSync(filePath, encoding);
         res.writeHead(200, { 'Content-Type': contentType });
         res.end(content);
     } catch (error) {
