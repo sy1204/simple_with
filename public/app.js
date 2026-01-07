@@ -1485,51 +1485,69 @@
                 // 검색 버튼 이벤트
                 const searchBtn = document.getElementById('stock-search-btn');
                 const searchInput = document.getElementById('stock-search-input');
+
                 searchBtn.addEventListener('click', () => this.searchStock());
                 searchInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.searchStock();
                 });
 
-                // 실시간 검색 제안 (auto-complete)
+                // 실시간 자동완성 (심플 버전)
                 let searchTimeout;
                 searchInput.addEventListener('input', (e) => {
                     const query = e.target.value.trim();
 
-                    // 입력 제거 시 리스트 숨김
+                    // 빈 입력 → 숨김
                     if (!query) {
                         this.hideStockMatches();
                         return;
                     }
 
-                    // 6자리 숫자면 자동완성 안 함 (바로 검색 가능)
+                    // 6자리 숫자(종목코드)면 자동완성 안함
                     if (/^\d{6}$/.test(query)) {
                         this.hideStockMatches();
                         return;
                     }
 
-                    // 2글자 이상일 때만 검색
+                    // 2글자 이상만 검색
                     if (query.length < 2) {
                         this.hideStockMatches();
                         return;
                     }
 
-                    // Debounce: 300ms 후 검색
+                    // Debounce 300ms
                     clearTimeout(searchTimeout);
-                    searchTimeout = setTimeout(async () => {
-                        try {
-                            const response = await fetch(`/api/stock-search?q=${encodeURIComponent(query)}`);
-                            const result = await response.json();
-
-                            if (result.success && result.data && result.data.length > 0) {
-                                this.showStockMatchesFromAPI(query, result.data);
-                            } else {
-                                this.hideStockMatches();
-                            }
-                        } catch (error) {
-                            console.error('[Stock] 자동완성 오류:', error);
-                        }
-                    }, 300);
+                    searchTimeout = setTimeout(() => this.fetchStockSuggestions(query), 300);
                 });
+
+                // 외부 클릭 시 자동완성 닫기
+                document.addEventListener('click', (e) => {
+                    const matchesDiv = document.getElementById('stock-matches');
+                    if (matchesDiv && !matchesDiv.contains(e.target) && e.target !== searchInput) {
+                        this.hideStockMatches();
+                    }
+                });
+            }
+        },
+
+        // 자동완성 API 호출
+        async fetchStockSuggestions(query) {
+            try {
+                const response = await fetch(`/api/stock-search?q=${encodeURIComponent(query)}`);
+
+                if (!response.ok) {
+                    console.log('[Stock] 자동완성 API 응답 실패:', response.status);
+                    return;
+                }
+
+                const result = await response.json();
+
+                if (result.success && result.data && result.data.length > 0) {
+                    this.showStockMatchesFromAPI(query, result.data);
+                } else {
+                    this.hideStockMatches();
+                }
+            } catch (error) {
+                console.log('[Stock] 자동완성 네트워크 오류 (무시됨)');
             }
         },
         calcInterest() {
@@ -1613,61 +1631,60 @@
             }
         },
 
-        // 개별 주식 검색 (실시간 API 사용)
+        // 개별 주식 검색 (심플 버전)
         async searchStock() {
             const input = document.getElementById('stock-search-input');
-            let searchTerm = input.value.trim();
-            const resultDiv = document.getElementById('stock-result');
+            const searchTerm = input.value.trim();
 
             if (!searchTerm) {
                 alert('종목명 또는 종목코드를 입력하세요');
                 return;
             }
 
-            console.log(`[Stock] 검색어 입력: "${searchTerm}"`);
-
-            // 종목 코드 또는 종목명
-            let symbol = searchTerm;
-
-            // 6자리 숫자가 아니면 실시간 검색 API 호출
-            if (!/^\d{6}$/.test(searchTerm)) {
-                try {
-                    const searchResponse = await fetch(`/api/stock-search?q=${encodeURIComponent(searchTerm)}`);
-                    const searchResult = await searchResponse.json();
-
-                    if (!searchResult.success || !searchResult.data || searchResult.data.length === 0) {
-                        // 검색 결과 없음 → 네이버 금융 검색 페이지로 안내
-                        const confirmGo = confirm(`"${searchTerm}" 종목을 찾을 수 없습니다.\n\n네이버 금융에서 검색하시겠습니까?`);
-                        if (confirmGo) {
-                            window.open(`https://finance.naver.com/search/search.naver?query=${encodeURIComponent(searchTerm)}`, '_blank');
-                        }
-                        return;
-                    }
-
-                    const matches = searchResult.data;
-                    console.log(`[Stock] 검색 결과: ${matches.length}개 발견`);
-
-                    if (matches.length === 1) {
-                        // 정확히 1개 매칭 → 자동 선택
-                        symbol = matches[0].shortSymbol;
-                        console.log(`[Stock] 단일 매칭: "${matches[0].name}" (${symbol})`);
-                    } else {
-                        // 여러 개 매칭 → 리스트로 표시
-                        this.showStockMatchesFromAPI(searchTerm, matches);
-                        return;
-                    }
-                } catch (error) {
-                    console.error('[Stock] 검색 API 오류:', error);
-                    alert('검색 중 오류가 발생했습니다');
-                    return;
-                }
-            }
-
-            // 매칭 리스트 숨기기 (검색 실행 시)
+            console.log(`[Stock] 검색: "${searchTerm}"`);
             this.hideStockMatches();
 
-            // 종목 정보 조회
-            this.loadStockDetail(symbol);
+            // 6자리 숫자 → 바로 종목 조회
+            if (/^\d{6}$/.test(searchTerm)) {
+                this.loadStockDetail(searchTerm);
+                return;
+            }
+
+            // 종목명 검색
+            try {
+                const response = await fetch(`/api/stock-search?q=${encodeURIComponent(searchTerm)}`);
+
+                if (!response.ok) {
+                    alert('검색 서버에 연결할 수 없습니다');
+                    return;
+                }
+
+                const result = await response.json();
+
+                if (!result.success || !result.data || result.data.length === 0) {
+                    // 검색 결과 없음
+                    const confirmGo = confirm(`"${searchTerm}" 종목을 찾을 수 없습니다.\n\n네이버 금융에서 검색하시겠습니까?`);
+                    if (confirmGo) {
+                        window.open(`https://finance.naver.com/search/search.naver?query=${encodeURIComponent(searchTerm)}`, '_blank');
+                    }
+                    return;
+                }
+
+                const matches = result.data;
+                console.log(`[Stock] ${matches.length}개 종목 발견`);
+
+                if (matches.length === 1) {
+                    // 1개 → 바로 조회
+                    this.loadStockDetail(matches[0].shortSymbol);
+                    input.value = matches[0].name;
+                } else {
+                    // 여러 개 → 리스트 표시
+                    this.showStockMatchesFromAPI(searchTerm, matches);
+                }
+            } catch (error) {
+                console.error('[Stock] 검색 오류:', error);
+                alert('검색 중 오류가 발생했습니다');
+            }
         },
 
         // 종목 상세 정보 조회

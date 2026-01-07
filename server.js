@@ -532,7 +532,7 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    // ===== 주식 검색 API (네이버 모바일 주식 API) =====
+    // ===== 주식 검색 API (네이버 주식 자동완성) =====
     if (pathname === '/api/stock-search') {
         const { q } = parsedUrl.query;
 
@@ -543,38 +543,38 @@ const server = http.createServer(async (req, res) => {
         }
 
         try {
-            const searchUrl = `https://m.stock.naver.com/api/search/stock?keyword=${encodeURIComponent(q)}`;
+            // 네이버 주식 자동완성 API
+            const searchUrl = `https://ac.stock.naver.com/ac?q=${encodeURIComponent(q)}&target=stock`;
 
             const response = await fetch(searchUrl, {
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Referer': 'https://m.stock.naver.com/'
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                 }
             });
 
-            console.log(`[Stock Search] Naver Mobile API response status: ${response.status}`);
+            console.log(`[Stock Search] Naver Stock AC API response status: ${response.status}`);
 
             if (!response.ok) {
-                const errorText = await response.text();
-                console.error(`[Stock Search] Naver API error: ${response.status} - ${errorText.substring(0, 200)}`);
                 throw new Error(`검색 실패: ${response.status}`);
             }
 
             const data = await response.json();
 
-            // 네이버 API 응답 형식: { stocks: [...] }
-            const stocks = data.stocks || [];
+            // 네이버 주식 자동완성 응답: { items: [{ code, name, typeCode, ... }] }
+            const items = data.items || [];
 
-            // 클라이언트가 기대하는 형식으로 변환
-            const koreanStocks = stocks.map(stock => ({
-                symbol: stock.stockCode ? `${stock.stockCode}.${stock.stockExchangeType === 'KOSPI' ? 'KS' : 'KQ'}` : '',
-                shortSymbol: stock.stockCode || '',
-                name: stock.stockName || '',
-                market: stock.stockExchangeType || 'KOSPI',
-                exchange: 'KRX'
-            }));
+            // 한국 주식만 필터링 (KOSPI, KOSDAQ)
+            const koreanStocks = items
+                .filter(item => item.nationCode === 'KOR' && ['KOSPI', 'KOSDAQ'].includes(item.typeCode))
+                .map(item => ({
+                    symbol: `${item.code}.${item.typeCode === 'KOSPI' ? 'KS' : 'KQ'}`,
+                    shortSymbol: item.code,
+                    name: item.name,
+                    market: item.typeCode,
+                    exchange: 'KRX'
+                }));
 
-            console.log(`[Stock Search] Found ${koreanStocks.length} stocks for "${q}"`);
+            console.log(`[Stock Search] Found ${koreanStocks.length} Korean stocks for "${q}"`);
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify({ success: true, data: koreanStocks }));
         } catch (error) {
