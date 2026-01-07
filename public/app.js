@@ -2197,6 +2197,24 @@
                 if (e.target.id === 'weather-modal') this.closeModal();
             });
 
+            // 천문정보 링크 버튼
+            document.getElementById('weather-astro-link')?.addEventListener('click', () => {
+                const loc = this.currentLocation;
+                const cityName = loc.name.split(' ')[0]; // "서울 강남구" → "서울"
+                const gaismaUrls = {
+                    '서울': 'https://www.gaisma.com/en/location/soul.html',
+                    '부산': 'https://www.gaisma.com/en/location/busan.html',
+                    '대구': 'https://www.gaisma.com/en/location/daegu.html',
+                    '인천': 'https://www.gaisma.com/en/location/incheon.html',
+                    '대전': 'https://www.gaisma.com/en/location/daejeon.html',
+                    '광주': 'https://www.gaisma.com/en/location/gwangju.html',
+                    '울산': 'https://www.gaisma.com/en/location/ulsan.html',
+                    '제주': 'https://www.gaisma.com/en/location/jeju.html',
+                };
+                const url = gaismaUrls[cityName] || gaismaUrls['서울'];
+                window.open(url, '_blank', 'noopener,noreferrer');
+            });
+
             // 새로고침 버튼
             document.getElementById('weather-refresh-btn')?.addEventListener('click', () => {
                 const btn = document.getElementById('weather-refresh-btn');
@@ -2457,34 +2475,39 @@
             }
         },
 
-        // 일출/일몰 시간 계산 (서울 기준, 위도 37.5도)
+        // 일출/일몰 시간 계산 (현재 위치 기준)
         calcSunRiseSet() {
-            const now = new Date();
-            const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+            const loc = this.currentLocation;
+            // 지역별 대략적인 위도/경도 (서울 기본값)
+            let lat = 37.5, lon = 126.97;
 
-            // 서울 기준 (위도 37.5도) 간단한 일출/일몰 계산
-            // 연중 변화: 일출 5:10~7:45, 일몰 17:15~19:55 (대략)
-            const lat = 37.5;
-
-            // 간단한 계산 공식 (정확도 ±5분)
-            const declination = -23.45 * Math.cos((360 / 365) * (dayOfYear + 10) * Math.PI / 180);
-            const hourAngle = Math.acos(-Math.tan(lat * Math.PI / 180) * Math.tan(declination * Math.PI / 180)) * 180 / Math.PI;
-
-            const solarNoon = 12 + (127 - 126.98) * 4 / 60; // 서울 경도 보정
-            const sunriseHour = solarNoon - hourAngle / 15;
-            const sunsetHour = solarNoon + hourAngle / 15;
-
-            const formatTime = (h) => {
-                const hours = Math.floor(h);
-                const mins = Math.round((h - hours) * 60);
-                return `${String(hours).padStart(2, '0')}${String(mins).padStart(2, '0')}`;
+            // 주요 도시별 좌표 매핑
+            const cityName = loc.name.split(' ')[0];
+            const coords = {
+                '서울': [37.57, 126.98],
+                '부산': [35.18, 129.08],
+                '대구': [35.87, 128.60],
+                '인천': [37.46, 126.71],
+                '광주': [35.16, 126.85],
+                '대전': [36.35, 127.38],
+                '울산': [35.54, 129.31],
+                '제주': [33.49, 126.53],
+                '세종': [36.48, 127.29],
+                '경기': [37.41, 127.52],
+                '강원': [37.88, 127.73],
+                '충북': [36.64, 127.49],
+                '충남': [36.66, 126.67],
+                '전북': [35.82, 127.11],
+                '전남': [34.81, 126.46],
+                '경북': [36.49, 128.89],
+                '경남': [35.18, 128.25]
             };
 
-            return {
-                sunrise: formatTime(sunriseHour),
-                sunset: formatTime(sunsetHour),
-                location: '서울'
-            };
+            if (coords[cityName]) {
+                [lat, lon] = coords[cityName];
+            }
+
+            return this.calculateSunriseSunset(lat, lon);
         },
 
         // 생활기상지수 로드 (자외선 지수)
@@ -2525,6 +2548,62 @@
             if (v <= 7) return { text: '높음', class: 'text-orange-500' };
             if (v <= 10) return { text: '매우높음', class: 'text-red-500' };
             return { text: '위험', class: 'text-purple-600' };
+        },
+
+        // 일출/일몰 계산 (Sunrise Equation)
+        calculateSunriseSunset(lat = 37.5, lon = 126.97) {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1;
+            const day = now.getDate();
+
+            // 율리우스일 계산
+            const a = Math.floor((14 - month) / 12);
+            const y = year + 4800 - a;
+            const m = month + 12 * a - 3;
+            const jdn = day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+            const n = jdn - 2451545 + 0.0008;
+
+            // 평균 태양 경도
+            const J = n - lon / 360;
+            const M = (357.5291 + 0.98560028 * J) % 360;
+            const Mrad = M * Math.PI / 180;
+            const C = 1.9148 * Math.sin(Mrad) + 0.0200 * Math.sin(2 * Mrad) + 0.0003 * Math.sin(3 * Mrad);
+            const lambda = (M + C + 180 + 102.9372) % 360;
+
+            // 적위 계산
+            const lambdaRad = lambda * Math.PI / 180;
+            const sinDec = Math.sin(lambdaRad) * Math.sin(23.44 * Math.PI / 180);
+            const cosDec = Math.cos(Math.asin(sinDec));
+
+            // 시간각 계산 (지평선 아래 -0.833도)
+            const latRad = lat * Math.PI / 180;
+            const cosH = (Math.sin(-0.833 * Math.PI / 180) - Math.sin(latRad) * sinDec) / (Math.cos(latRad) * cosDec);
+
+            if (cosH > 1 || cosH < -1) {
+                // 극지방 (백야 또는 극야)
+                return null;
+            }
+
+            const H = Math.acos(cosH) * 180 / Math.PI;
+
+            // 일출/일몰 시각 계산 (UTC)
+            const Jtransit = 2451545 + J + 0.0053 * Math.sin(Mrad) - 0.0069 * Math.sin(2 * lambdaRad);
+            const Jrise = Jtransit - H / 360;
+            const Jset = Jtransit + H / 360;
+
+            // 현지시로 변환 (한국 UTC+9)
+            const toLocalTime = (jd) => {
+                const hour = ((jd + 0.5 - Math.floor(jd + 0.5)) * 24 + 9) % 24;
+                const h = Math.floor(hour);
+                const m = Math.floor((hour - h) * 60);
+                return String(h).padStart(2, '0') + String(m).padStart(2, '0');
+            };
+
+            return {
+                sunrise: toLocalTime(Jrise),
+                sunset: toLocalTime(Jset)
+            };
         },
 
         // 과거 데이터를 sessionStorage에 저장 (24시간 유지)
@@ -3091,12 +3170,21 @@
                 lifeItems.push(`<span class="text-xs ${uvInfo.class} font-medium">☀️ 자외선 ${uvInfo.text}</span>`);
             }
 
-            // 일출/일몰
+            // 일출/일몰 + 낮 길이
             if (this.sunRiseSet?.sunrise && this.sunRiseSet?.sunset) {
                 const sunrise = this.sunRiseSet.sunrise.slice(0, 2) + ':' + this.sunRiseSet.sunrise.slice(2, 4);
                 const sunset = this.sunRiseSet.sunset.slice(0, 2) + ':' + this.sunRiseSet.sunset.slice(2, 4);
-                lifeItems.push(`<span class="text-xs text-slate-500">일출 ${sunrise}</span>`);
-                lifeItems.push(`<span class="text-xs text-slate-500">일몰 ${sunset}</span>`);
+
+                // 낮 길이 계산
+                const sunriseMin = parseInt(this.sunRiseSet.sunrise.slice(0, 2)) * 60 + parseInt(this.sunRiseSet.sunrise.slice(2, 4));
+                const sunsetMin = parseInt(this.sunRiseSet.sunset.slice(0, 2)) * 60 + parseInt(this.sunRiseSet.sunset.slice(2, 4));
+                const daylightMin = sunsetMin - sunriseMin;
+                const daylightHours = Math.floor(daylightMin / 60);
+                const daylightMins = daylightMin % 60;
+
+                lifeItems.push(`<span class="text-xs text-amber-600 font-medium">🌅 일출 ${sunrise}</span>`);
+                lifeItems.push(`<span class="text-xs text-orange-600 font-medium">🌇 일몰 ${sunset}</span>`);
+                lifeItems.push(`<span class="text-xs text-slate-500">낮 길이 ${daylightHours}시간 ${daylightMins}분</span>`);
             }
 
             if (lifeItems.length > 0) {
