@@ -3182,9 +3182,9 @@
                 const daylightHours = Math.floor(daylightMin / 60);
                 const daylightMins = daylightMin % 60;
 
-                lifeItems.push(`<span class="text-xs text-amber-600 font-medium">🌅 일출 ${sunrise}</span>`);
-                lifeItems.push(`<span class="text-xs text-orange-600 font-medium">🌇 일몰 ${sunset}</span>`);
-                lifeItems.push(`<span class="text-xs text-slate-500">낮 길이 ${daylightHours}시간 ${daylightMins}분</span>`);
+                lifeItems.push(`<span class="text-xs text-slate-500">일출 ${sunrise}</span>`);
+                lifeItems.push(`<span class="text-xs text-slate-500">일몰 ${sunset}</span>`);
+                lifeItems.push(`<span class="text-xs text-slate-500">낮 ${daylightHours}h ${daylightMins}m</span>`);
             }
 
             if (lifeItems.length > 0) {
