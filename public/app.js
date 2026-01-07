@@ -1443,6 +1443,12 @@
                                 <button id="stock-search-btn" class="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">검색</button>
                             </div>
                             <p class="text-xs text-slate-400">※ 종목명(삼성전자) 또는 6자리 코드(005930) 입력</p>
+
+                            <!-- 검색 매칭 리스트 -->
+                            <div id="stock-matches" class="hidden bg-background-light dark:bg-[#111822] rounded-lg border border-slate-200 dark:border-slate-700 max-h-64 overflow-y-auto">
+                                <p class="text-xs text-slate-500 p-3 pb-2 font-medium" id="stock-matches-title"></p>
+                                <ul id="stock-matches-list" class="divide-y divide-slate-200 dark:divide-slate-700"></ul>
+                            </div>
                         </div>
 
                         <!-- 검색 결과 -->
@@ -1614,13 +1620,15 @@
                         symbol = this.stockMapping[matches[0]];
                         console.log(`[Stock] 단일 매칭 "${searchTerm}" → "${matches[0]}" (${symbol})`);
                     } else {
-                        // 여러 개 매칭 → 사용자 선택
-                        const selected = matches.slice(0, 10).join('\n');
-                        alert(`"${searchTerm}" 검색 결과 (${matches.length}개):\n\n${selected}\n\n정확한 종목명을 입력하세요.`);
+                        // 여러 개 매칭 → 리스트로 표시
+                        this.showStockMatches(searchTerm, matches);
                         return;
                     }
                 }
             }
+
+            // 매칭 리스트 숨기기 (검색 실행 시)
+            this.hideStockMatches();
 
             try {
                 const response = await fetch(`/api/stock?type=search&symbol=${encodeURIComponent(symbol)}`);
@@ -1751,6 +1759,63 @@
             ctx.font = '9px sans-serif';
             ctx.fillText(maxPrice.toLocaleString(), padding.left + 2, padding.top + 10);
             ctx.fillText(minPrice.toLocaleString(), padding.left + 2, height - padding.bottom - 2);
+        },
+
+        // 여러 개 매칭된 종목 리스트 표시
+        showStockMatches(searchTerm, matches) {
+            const matchesDiv = document.getElementById('stock-matches');
+            const matchesTitle = document.getElementById('stock-matches-title');
+            const matchesList = document.getElementById('stock-matches-list');
+
+            if (!matchesDiv || !matchesTitle || !matchesList) return;
+
+            // 제목 설정
+            matchesTitle.textContent = `"${searchTerm}" 검색 결과 (${matches.length}개)`;
+
+            // 리스트 초기화 및 생성
+            matchesList.innerHTML = '';
+
+            // 최대 10개만 표시
+            matches.slice(0, 10).forEach(name => {
+                const li = document.createElement('li');
+                li.className = 'px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors';
+
+                const code = this.stockMapping[name];
+                li.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium">${name}</span>
+                        <span class="text-xs text-slate-500">${code}</span>
+                    </div>
+                `;
+
+                // 클릭 시 해당 종목 검색
+                li.addEventListener('click', () => {
+                    const input = document.getElementById('stock-search-input');
+                    input.value = name;
+                    this.searchStock();
+                });
+
+                matchesList.appendChild(li);
+            });
+
+            // 10개 이상이면 안내 메시지 추가
+            if (matches.length > 10) {
+                const moreInfo = document.createElement('div');
+                moreInfo.className = 'px-4 py-2 text-xs text-slate-400 text-center border-t border-slate-200 dark:border-slate-700';
+                moreInfo.textContent = `그 외 ${matches.length - 10}개 종목 (더 정확한 검색어를 입력하세요)`;
+                matchesList.appendChild(moreInfo);
+            }
+
+            // 표시
+            matchesDiv.classList.remove('hidden');
+        },
+
+        // 매칭 리스트 숨기기
+        hideStockMatches() {
+            const matchesDiv = document.getElementById('stock-matches');
+            if (matchesDiv) {
+                matchesDiv.classList.add('hidden');
+            }
         }
     };
 
