@@ -64,8 +64,9 @@ module.exports = async function handler(req, res) {
                 searchSymbol = `${symbol}.KS`;
             }
 
+            // 차트 데이터 (5분봉, 1일)
             const response = await fetch(
-                `https://query1.finance.yahoo.com/v8/finance/chart/${searchSymbol}?interval=1d&range=1d`,
+                `https://query1.finance.yahoo.com/v8/finance/chart/${searchSymbol}?interval=5m&range=1d`,
                 {
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -78,7 +79,7 @@ module.exports = async function handler(req, res) {
                 if (searchSymbol.endsWith('.KS')) {
                     searchSymbol = symbol + '.KQ';
                     const retryResponse = await fetch(
-                        `https://query1.finance.yahoo.com/v8/finance/chart/${searchSymbol}?interval=1d&range=1d`,
+                        `https://query1.finance.yahoo.com/v8/finance/chart/${searchSymbol}?interval=5m&range=1d`,
                         {
                             headers: {
                                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -91,7 +92,16 @@ module.exports = async function handler(req, res) {
                     }
 
                     const data = await retryResponse.json();
-                    const quote = data.chart.result[0].meta;
+                    const result = data.chart.result[0];
+                    const quote = result.meta;
+
+                    // 차트 데이터 추출
+                    const timestamps = result.timestamp || [];
+                    const prices = result.indicators.quote[0].close || [];
+                    const chartData = timestamps.map((t, i) => ({
+                        time: t,
+                        price: prices[i]
+                    })).filter(d => d.price !== null);
 
                     res.status(200).json({
                         success: true,
@@ -103,7 +113,8 @@ module.exports = async function handler(req, res) {
                             changePercent: ((quote.regularMarketPrice - quote.chartPreviousClose) / quote.chartPreviousClose * 100),
                             previousClose: quote.chartPreviousClose || 0,
                             currency: quote.currency || 'KRW',
-                            market: searchSymbol.endsWith('.KS') ? '코스피' : '코스닥'
+                            market: searchSymbol.endsWith('.KS') ? '코스피' : '코스닥',
+                            chart: chartData
                         }
                     });
                     return;
@@ -113,7 +124,16 @@ module.exports = async function handler(req, res) {
             }
 
             const data = await response.json();
-            const quote = data.chart.result[0].meta;
+            const result = data.chart.result[0];
+            const quote = result.meta;
+
+            // 차트 데이터 추출
+            const timestamps = result.timestamp || [];
+            const prices = result.indicators.quote[0].close || [];
+            const chartData = timestamps.map((t, i) => ({
+                time: t,
+                price: prices[i]
+            })).filter(d => d.price !== null);
 
             res.status(200).json({
                 success: true,
@@ -125,7 +145,8 @@ module.exports = async function handler(req, res) {
                     changePercent: ((quote.regularMarketPrice - quote.chartPreviousClose) / quote.chartPreviousClose * 100),
                     previousClose: quote.chartPreviousClose || 0,
                     currency: quote.currency || 'KRW',
-                    market: searchSymbol.endsWith('.KS') ? '코스피' : '코스닥'
+                    market: searchSymbol.endsWith('.KS') ? '코스피' : '코스닥',
+                    chart: chartData
                 }
             });
             return;

@@ -1268,6 +1268,11 @@
             '알테오젠': '196170', '위메이드': '112040', '컴투스': '078340',
             '펄어비스': '263750', '데브시스터즈': '194480', '게임빌': '063080',
             '넥슨게임즈': '225570', '엔씨소프트': '036570', '위지윅스튜디오': '299900',
+            // 엔터테인먼트
+            'SM': '041510', 'SM엔터테인먼트': '041510', '에스엠': '041510',
+            'JYP': '035900', 'JYP엔터테인먼트': '035900', '와이지엔터테인먼트': '122870',
+            'YG엔터테인먼트': '122870', 'YG': '122870', '하이브': '352820', 'HYBE': '352820',
+            '카카오엔터테인먼트': '293490',
             // 바이오/제약
             '셀트리온': '068270', '삼성바이오로직스': '207940', '셀트리온헬스케어': '091990',
             '셀트리온제약': '068760', 'SK바이오팜': '326030', 'SK바이오사이언스': '302440',
@@ -1428,14 +1433,17 @@
                                 </div>
                                 <span id="stock-market" class="px-2 py-1 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-600"></span>
                             </div>
-                            <div class="border-t border-slate-200 dark:border-slate-700 pt-3">
-                                <p id="stock-price" class="text-2xl font-bold mb-1">-</p>
-                                <p id="stock-change" class="text-sm">-</p>
-                                <p id="stock-prev" class="text-xs text-slate-400 mt-2">-</p>
-                                <a id="stock-naver-link" href="#" target="_blank" class="inline-flex items-center gap-1 mt-3 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-medium rounded-lg transition-colors">
-                                    <span class="material-symbols-outlined text-sm">open_in_new</span>
-                                    네이버 증권에서 상세보기
-                                </a>
+                            <div class="border-t border-slate-200 dark:border-slate-700 pt-3 flex gap-4">
+                                <!-- 주가 정보 (클릭 가능) -->
+                                <div class="flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity" id="stock-price-wrapper">
+                                    <p id="stock-price" class="text-2xl font-bold mb-1">-</p>
+                                    <p id="stock-change" class="text-sm">-</p>
+                                    <p id="stock-prev" class="text-xs text-slate-400 mt-2">-</p>
+                                </div>
+                                <!-- 차트 -->
+                                <div class="flex-1 min-w-0">
+                                    <canvas id="stock-chart" class="w-full" height="100"></canvas>
+                                </div>
                             </div>
                         </div>
                     </div>`;
@@ -1603,14 +1611,17 @@
                     document.getElementById('stock-change').innerHTML = `<span class="${changeClass}">${sign} ${Math.abs(stock.change).toLocaleString()}원 (${sign}${Math.abs(stock.changePercent).toFixed(2)}%)</span>`;
                     document.getElementById('stock-prev').textContent = `전일 종가: ${stock.previousClose.toLocaleString()}원`;
 
-                    // 네이버 증권 링크 추가
-                    const naverLink = document.getElementById('stock-naver-link');
-                    if (naverLink) {
-                        naverLink.href = `https://finance.naver.com/item/main.naver?code=${stockCode}`;
-                        naverLink.onclick = (e) => {
-                            e.preventDefault();
-                            window.open(naverLink.href, '_blank', 'noopener,noreferrer');
+                    // 주가 클릭 시 네이버 증권으로 이동
+                    const priceWrapper = document.getElementById('stock-price-wrapper');
+                    if (priceWrapper) {
+                        priceWrapper.onclick = () => {
+                            window.open(`https://finance.naver.com/item/main.naver?code=${stockCode}`, '_blank');
                         };
+                    }
+
+                    // 차트 그리기
+                    if (stock.chart && stock.chart.length > 0) {
+                        this.drawStockChart(stock.chart, stock.previousClose);
                     }
 
                     resultDiv.classList.remove('hidden');
@@ -1623,6 +1634,84 @@
                 alert('주식 정보를 불러올 수 없습니다');
                 resultDiv.classList.add('hidden');
             }
+        },
+        drawStockChart(chartData, previousClose) {
+            const canvas = document.getElementById('stock-chart');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width = canvas.offsetWidth;
+            const height = canvas.height;
+
+            // 캔버스 초기화
+            ctx.clearRect(0, 0, width, height);
+
+            if (!chartData || chartData.length === 0) return;
+
+            // 가격 데이터 추출
+            const prices = chartData.map(d => d.price);
+            const minPrice = Math.min(...prices);
+            const maxPrice = Math.max(...prices);
+            const priceRange = maxPrice - minPrice;
+
+            // 여백 설정
+            const padding = { top: 10, right: 10, bottom: 10, left: 10 };
+            const chartWidth = width - padding.left - padding.right;
+            const chartHeight = height - padding.top - padding.bottom;
+
+            // 다크모드 감지
+            const isDark = document.documentElement.classList.contains('dark');
+            const lineColor = isDark ? '#60a5fa' : '#3b82f6';
+            const gridColor = isDark ? '#334155' : '#e2e8f0';
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+
+            // 그리드 라인 (수평선 3개)
+            ctx.strokeStyle = gridColor;
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 2; i++) {
+                const y = padding.top + (chartHeight / 2) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding.left, y);
+                ctx.lineTo(width - padding.right, y);
+                ctx.stroke();
+            }
+
+            // 전일 종가 기준선 (있는 경우)
+            if (previousClose && priceRange > 0) {
+                const baseY = padding.top + chartHeight - ((previousClose - minPrice) / priceRange) * chartHeight;
+                ctx.strokeStyle = isDark ? '#64748b' : '#94a3b8';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath();
+                ctx.moveTo(padding.left, baseY);
+                ctx.lineTo(width - padding.right, baseY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // 가격 라인 그리기
+            ctx.strokeStyle = lineColor;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+
+            chartData.forEach((point, index) => {
+                const x = padding.left + (index / (chartData.length - 1)) * chartWidth;
+                const y = padding.top + chartHeight - ((point.price - minPrice) / priceRange) * chartHeight;
+
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+
+            ctx.stroke();
+
+            // 최고/최저 가격 표시
+            ctx.fillStyle = textColor;
+            ctx.font = '9px sans-serif';
+            ctx.fillText(maxPrice.toLocaleString(), padding.left + 2, padding.top + 10);
+            ctx.fillText(minPrice.toLocaleString(), padding.left + 2, height - padding.bottom - 2);
         }
     };
 
