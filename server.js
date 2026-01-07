@@ -532,6 +532,145 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // ===== 주식 정보 API (Yahoo Finance) =====
+    if (pathname === '/api/stock') {
+        const { symbol, type } = parsedUrl.query;
+
+        try {
+            // 코스피/코스닥 지수 조회
+            if (type === 'index') {
+                const symbols = ['^KS11', '^KQ11'];
+                const results = {};
+
+                for (const sym of symbols) {
+                    try {
+                        const response = await fetch(
+                            `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=1d`,
+                            {
+                                headers: {
+                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                                }
+                            }
+                        );
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            const quote = data.chart.result[0].meta;
+                            const name = sym === '^KS11' ? 'KOSPI' : 'KOSDAQ';
+
+                            results[name] = {
+                                symbol: sym,
+                                name: name,
+                                price: quote.regularMarketPrice || 0,
+                                change: quote.regularMarketPrice - quote.chartPreviousClose,
+                                changePercent: ((quote.regularMarketPrice - quote.chartPreviousClose) / quote.chartPreviousClose * 100),
+                                previousClose: quote.chartPreviousClose || 0
+                            };
+                        }
+                    } catch (err) {
+                        console.error(`[Stock] Error fetching ${sym}:`, err);
+                    }
+                }
+
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ success: true, data: results }));
+                return;
+            }
+
+            // 개별 주식 조회
+            if (type === 'search' && symbol) {
+                let searchSymbol = symbol;
+
+                // 숫자만 입력된 경우 .KS 추가
+                if (/^\d{6}$/.test(symbol)) {
+                    searchSymbol = `${symbol}.KS`;
+                }
+
+                const response = await fetch(
+                    `https://query1.finance.yahoo.com/v8/finance/chart/${searchSymbol}?interval=1d&range=1d`,
+                    {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                        }
+                    }
+                );
+
+                if (!response.ok && searchSymbol.endsWith('.KS')) {
+                    // .KS 실패 시 .KQ 시도
+                    searchSymbol = symbol + '.KQ';
+                    const retryResponse = await fetch(
+                        `https://query1.finance.yahoo.com/v8/finance/chart/${searchSymbol}?interval=1d&range=1d`,
+                        {
+                            headers: {
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                            }
+                        }
+                    );
+
+                    if (!retryResponse.ok) {
+                        throw new Error('종목을 찾을 수 없습니다');
+                    }
+
+                    const data = await retryResponse.json();
+                    const quote = data.chart.result[0].meta;
+
+                    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end(JSON.stringify({
+                        success: true,
+                        data: {
+                            symbol: searchSymbol,
+                            name: quote.symbol || searchSymbol,
+                            price: quote.regularMarketPrice || 0,
+                            change: quote.regularMarketPrice - quote.chartPreviousClose,
+                            changePercent: ((quote.regularMarketPrice - quote.chartPreviousClose) / quote.chartPreviousClose * 100),
+                            previousClose: quote.chartPreviousClose || 0,
+                            currency: quote.currency || 'KRW',
+                            market: '코스닥'
+                        }
+                    }));
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error('종목을 찾을 수 없습니다');
+                }
+
+                const data = await response.json();
+                const quote = data.chart.result[0].meta;
+
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({
+                    success: true,
+                    data: {
+                        symbol: searchSymbol,
+                        name: quote.symbol || searchSymbol,
+                        price: quote.regularMarketPrice || 0,
+                        change: quote.regularMarketPrice - quote.chartPreviousClose,
+                        changePercent: ((quote.regularMarketPrice - quote.chartPreviousClose) / quote.chartPreviousClose * 100),
+                        previousClose: quote.chartPreviousClose || 0,
+                        currency: quote.currency || 'KRW',
+                        market: searchSymbol.endsWith('.KS') ? '코스피' : '코스닥'
+                    }
+                }));
+                return;
+            }
+
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({
+                success: false,
+                error: '잘못된 요청입니다. type=index 또는 type=search&symbol=종목코드를 사용하세요.'
+            }));
+        } catch (error) {
+            console.error('[Stock] Error:', error);
+            res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({
+                success: false,
+                error: error.message || '주식 정보를 불러올 수 없습니다'
+            }));
+        }
+        return;
+    }
+
     // ===== 미세먼지 API (에어코리아) =====
     if (pathname === '/api/airquality') {
         if (!DATA_GO_KR_API_KEY) {

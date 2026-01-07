@@ -1229,14 +1229,17 @@
         mode: 'interest',
         rateUnit: 'year',   // 'year' (연이율) or 'month' (월이율)
         periodUnit: 'year', // 'year' or 'month'
+        stockData: null,    // 주식 데이터
         init() {
             this.render();
             document.getElementById('finance-interest').addEventListener('click', () => { this.mode = 'interest'; this.render(); this.updateButtons(); });
             document.getElementById('finance-discount').addEventListener('click', () => { this.mode = 'discount'; this.render(); this.updateButtons(); });
+            document.getElementById('finance-stock').addEventListener('click', () => { this.mode = 'stock'; this.render(); this.updateButtons(); this.loadStockIndex(); });
         },
         updateButtons() {
             document.getElementById('finance-interest').className = this.mode === 'interest' ? 'px-3 py-1 text-xs font-bold bg-white dark:bg-card-dark rounded shadow-sm' : 'px-3 py-1 text-xs font-medium text-slate-500';
             document.getElementById('finance-discount').className = this.mode === 'discount' ? 'px-3 py-1 text-xs font-bold bg-white dark:bg-card-dark rounded shadow-sm' : 'px-3 py-1 text-xs font-medium text-slate-500';
+            document.getElementById('finance-stock').className = this.mode === 'stock' ? 'px-3 py-1 text-xs font-bold bg-white dark:bg-card-dark rounded shadow-sm' : 'px-3 py-1 text-xs font-medium text-slate-500';
         },
         toggleRateUnit() {
             this.rateUnit = this.rateUnit === 'year' ? 'month' : 'year';
@@ -1289,7 +1292,7 @@
                 document.getElementById('fin-calc').addEventListener('click', () => this.calcInterest());
                 document.getElementById('fin-rate-toggle').addEventListener('click', () => this.toggleRateUnit());
                 document.getElementById('fin-period-toggle').addEventListener('click', () => this.togglePeriodUnit());
-            } else {
+            } else if (this.mode === 'discount') {
                 container.innerHTML = `
                     <div class="flex-1 min-w-0 space-y-3">
                         <div class="space-y-1"><label class="text-xs font-medium text-slate-500">원래 가격</label><div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">₩</span><input id="fin-original" class="w-full pl-7 bg-background-light dark:bg-[#111822] rounded-lg border-none text-sm font-semibold focus:ring-2 focus:ring-primary h-9" type="text" value="100,000" /></div></div>
@@ -1301,6 +1304,57 @@
                         <div class="flex items-center justify-between"><span class="text-xs font-medium">최종 가격</span><span id="fin-final" class="text-lg font-bold truncate">-</span></div>
                     </div>`;
                 document.getElementById('fin-calc').addEventListener('click', () => this.calcDiscount());
+            } else if (this.mode === 'stock') {
+                container.innerHTML = `
+                    <div class="flex-1 space-y-4">
+                        <!-- 코스피/코스닥 지수 -->
+                        <div id="stock-indexes" class="grid grid-cols-2 gap-3">
+                            <div class="bg-background-light dark:bg-[#111822] rounded-lg p-3 text-center">
+                                <p class="text-xs text-slate-400 mb-1">KOSPI</p>
+                                <p id="kospi-price" class="text-lg font-bold">-</p>
+                                <p id="kospi-change" class="text-xs">-</p>
+                            </div>
+                            <div class="bg-background-light dark:bg-[#111822] rounded-lg p-3 text-center">
+                                <p class="text-xs text-slate-400 mb-1">KOSDAQ</p>
+                                <p id="kosdaq-price" class="text-lg font-bold">-</p>
+                                <p id="kosdaq-change" class="text-xs">-</p>
+                            </div>
+                        </div>
+
+                        <!-- 주식 검색 -->
+                        <div class="space-y-2">
+                            <label class="text-xs font-medium text-slate-500">종목 검색</label>
+                            <div class="flex gap-2">
+                                <input id="stock-search-input" class="flex-1 bg-background-light dark:bg-[#111822] rounded-lg border-none text-sm px-3 py-2 focus:ring-2 focus:ring-primary" type="text" placeholder="종목코드 (예: 005930)" />
+                                <button id="stock-search-btn" class="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">검색</button>
+                            </div>
+                            <p class="text-xs text-slate-400">※ 6자리 종목코드 입력 (예: 삼성전자 005930)</p>
+                        </div>
+
+                        <!-- 검색 결과 -->
+                        <div id="stock-result" class="hidden bg-background-light dark:bg-[#111822] rounded-lg p-4 space-y-3">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p id="stock-name" class="font-bold text-base"></p>
+                                    <p id="stock-code" class="text-xs text-slate-400"></p>
+                                </div>
+                                <span id="stock-market" class="px-2 py-1 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-600"></span>
+                            </div>
+                            <div class="border-t border-slate-200 dark:border-slate-700 pt-3">
+                                <p id="stock-price" class="text-2xl font-bold mb-1">-</p>
+                                <p id="stock-change" class="text-sm">-</p>
+                                <p id="stock-prev" class="text-xs text-slate-400 mt-2">-</p>
+                            </div>
+                        </div>
+                    </div>`;
+
+                // 검색 버튼 이벤트
+                const searchBtn = document.getElementById('stock-search-btn');
+                const searchInput = document.getElementById('stock-search-input');
+                searchBtn.addEventListener('click', () => this.searchStock());
+                searchInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.searchStock();
+                });
             }
         },
         calcInterest() {
@@ -1350,6 +1404,77 @@
             const saved = Math.round(o * d);
             document.getElementById('fin-saved').textContent = '-' + saved.toLocaleString();
             document.getElementById('fin-final').textContent = (o - saved).toLocaleString() + '원';
+        },
+
+        // 주식 지수 조회 (코스피/코스닥)
+        async loadStockIndex() {
+            try {
+                const response = await fetch('/api/stock?type=index');
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    // 코스피
+                    if (result.data.KOSPI) {
+                        const kospi = result.data.KOSPI;
+                        const changeClass = kospi.change >= 0 ? 'text-red-500' : 'text-blue-500';
+                        const sign = kospi.change >= 0 ? '+' : '';
+                        document.getElementById('kospi-price').textContent = kospi.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        document.getElementById('kospi-change').innerHTML = `<span class="${changeClass}">${sign}${kospi.change.toFixed(2)} (${sign}${kospi.changePercent.toFixed(2)}%)</span>`;
+                    }
+
+                    // 코스닥
+                    if (result.data.KOSDAQ) {
+                        const kosdaq = result.data.KOSDAQ;
+                        const changeClass = kosdaq.change >= 0 ? 'text-red-500' : 'text-blue-500';
+                        const sign = kosdaq.change >= 0 ? '+' : '';
+                        document.getElementById('kosdaq-price').textContent = kosdaq.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        document.getElementById('kosdaq-change').innerHTML = `<span class="${changeClass}">${sign}${kosdaq.change.toFixed(2)} (${sign}${kosdaq.changePercent.toFixed(2)}%)</span>`;
+                    }
+                }
+            } catch (error) {
+                console.error('Stock index error:', error);
+                document.getElementById('kospi-price').textContent = '오류';
+                document.getElementById('kosdaq-price').textContent = '오류';
+            }
+        },
+
+        // 개별 주식 검색
+        async searchStock() {
+            const input = document.getElementById('stock-search-input');
+            const symbol = input.value.trim();
+            const resultDiv = document.getElementById('stock-result');
+
+            if (!symbol) {
+                alert('종목코드를 입력하세요');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/stock?type=search&symbol=${encodeURIComponent(symbol)}`);
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    const stock = result.data;
+                    const changeClass = stock.change >= 0 ? 'text-red-500' : 'text-blue-500';
+                    const sign = stock.change >= 0 ? '▲' : '▼';
+
+                    document.getElementById('stock-name').textContent = stock.name;
+                    document.getElementById('stock-code').textContent = stock.symbol;
+                    document.getElementById('stock-market').textContent = stock.market;
+                    document.getElementById('stock-price').textContent = stock.price.toLocaleString() + '원';
+                    document.getElementById('stock-change').innerHTML = `<span class="${changeClass}">${sign} ${Math.abs(stock.change).toLocaleString()}원 (${sign}${Math.abs(stock.changePercent).toFixed(2)}%)</span>`;
+                    document.getElementById('stock-prev').textContent = `전일 종가: ${stock.previousClose.toLocaleString()}원`;
+
+                    resultDiv.classList.remove('hidden');
+                } else {
+                    alert(result.error || '종목을 찾을 수 없습니다');
+                    resultDiv.classList.add('hidden');
+                }
+            } catch (error) {
+                console.error('Stock search error:', error);
+                alert('주식 정보를 불러올 수 없습니다');
+                resultDiv.classList.add('hidden');
+            }
         }
     };
 
