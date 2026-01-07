@@ -551,8 +551,12 @@ const server = http.createServer(async (req, res) => {
                 }
             });
 
+            console.log(`[Stock Search] Yahoo Finance response status: ${response.status}`);
+
             if (!response.ok) {
-                throw new Error('검색 실패');
+                const errorText = await response.text();
+                console.error(`[Stock Search] Yahoo Finance error: ${response.status} - ${errorText.substring(0, 200)}`);
+                throw new Error(`검색 실패: ${response.status}`);
             }
 
             const data = await response.json();
