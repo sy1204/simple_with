@@ -1230,6 +1230,40 @@
         rateUnit: 'year',   // 'year' (연이율) or 'month' (월이율)
         periodUnit: 'year', // 'year' or 'month'
         stockData: null,    // 주식 데이터
+
+        // 주요 종목 매핑 테이블 (종목명 → 종목코드)
+        stockMapping: {
+            // 시가총액 상위 종목들
+            '삼성전자': '005930', 'SK하이닉스': '000660', 'LG에너지솔루션': '373220',
+            '삼성바이오로직스': '207940', '현대차': '005380', '셀트리온': '068270',
+            'POSCO홀딩스': '005490', '기아': '000270', '삼성물산': '028260',
+            'LG화학': '051910', 'NAVER': '035420', '네이버': '035420', '현대모비스': '012330',
+            '삼성SDI': '006400', '카카오': '035720', 'SK이노베이션': '096770',
+            '한국전력': '015760', 'KB금융': '105560', '신한지주': '055550',
+            '삼성생명': '032830', 'SK': '034730', '포스코퓨처엠': '003670',
+            '삼성전기': '009150', 'LG전자': '066570', 'LG': '003550',
+            '크래프톤': '259960', '하이브': '352820', 'HMM': '011200',
+            'HD현대중공업': '329180', 'SK텔레콤': '017670', 'KT&G': '033780',
+            '기업은행': '024110', '현대글로비스': '086280', '삼성화재': '000810',
+            '아모레퍼시픽': '090430', 'LG생활건강': '051900', 'SK스퀘어': '402340',
+            '두산에너빌리티': '034020', '한화에어로스페이스': '012450', 'CJ제일제당': '097950',
+            '고려아연': '010130', '한국조선해양': '009540', '메리츠금융지주': '138040',
+            'S-Oil': '010950', '엔씨소프트': '036570', '현대건설': '000720',
+            '대한항공': '003490', 'KT': '030200', '삼성엔지니어링': '028050',
+            '롯데케미칼': '011170', '한화': '000880', 'LG유플러스': '032640',
+            '카카오뱅크': '323410', '펄어비스': '263750', '삼성중공업': '010140',
+            '현대제철': '004020', 'SK바이오팜': '326030', '포스코인터내셔널': '047050',
+            'DB손해보험': '005830', 'SK바이오사이언스': '302440', '삼성카드': '029780',
+            '하나금융지주': '086790', '우리금융지주': '316140', '넷마블': '251270',
+            '강원랜드': '035250', 'LG디스플레이': '034220', '코웨이': '021240',
+            '한국타이어앤테크놀로지': '161390', 'GS': '078930', '호텔신라': '008770',
+            '삼성증권': '016360', '카카오게임즈': '293490', '셀트리온헬스케어': '091990',
+            '셀트리온제약': '068760', '미래에셋증권': '006800', '현대백화점': '069960',
+            'HD현대': '267250', 'SK케미칼': '285130', '삼성바이오에피스': '207940',
+            'BGF리테일': '282330', 'CJ': '001040', 'GS리테일': '007070',
+            '한화솔루션': '009830', '한국가스공사': '036460', '한국항공우주': '047810'
+        },
+
         init() {
             this.render();
             document.getElementById('finance-interest').addEventListener('click', () => { this.mode = 'interest'; this.render(); this.updateButtons(); });
@@ -1325,10 +1359,10 @@
                         <div class="space-y-2">
                             <label class="text-xs font-medium text-slate-500">종목 검색</label>
                             <div class="flex gap-2">
-                                <input id="stock-search-input" class="flex-1 bg-background-light dark:bg-[#111822] rounded-lg border-none text-sm px-3 py-2 focus:ring-2 focus:ring-primary" type="text" placeholder="종목코드 (예: 005930)" />
+                                <input id="stock-search-input" class="flex-1 bg-background-light dark:bg-[#111822] rounded-lg border-none text-sm px-3 py-2 focus:ring-2 focus:ring-primary" type="text" placeholder="종목명 또는 종목코드 (예: 삼성전자, 005930)" />
                                 <button id="stock-search-btn" class="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">검색</button>
                             </div>
-                            <p class="text-xs text-slate-400">※ 6자리 종목코드 입력 (예: 삼성전자 005930)</p>
+                            <p class="text-xs text-slate-400">※ 종목명(삼성전자) 또는 6자리 코드(005930) 입력</p>
                         </div>
 
                         <!-- 검색 결과 -->
@@ -1441,12 +1475,25 @@
         // 개별 주식 검색
         async searchStock() {
             const input = document.getElementById('stock-search-input');
-            const symbol = input.value.trim();
+            let searchTerm = input.value.trim();
             const resultDiv = document.getElementById('stock-result');
 
-            if (!symbol) {
-                alert('종목코드를 입력하세요');
+            if (!searchTerm) {
+                alert('종목명 또는 종목코드를 입력하세요');
                 return;
+            }
+
+            // 종목명 → 종목코드 변환
+            let symbol = searchTerm;
+            if (!/^\d{6}$/.test(searchTerm)) {
+                // 숫자 6자리가 아니면 종목명으로 간주
+                if (this.stockMapping[searchTerm]) {
+                    symbol = this.stockMapping[searchTerm];
+                    console.log(`[Stock] 종목명 "${searchTerm}" → 종목코드 "${symbol}"`);
+                } else {
+                    alert(`"${searchTerm}" 종목을 찾을 수 없습니다.\n\n주요 종목: 삼성전자, SK하이닉스, 네이버, 카카오 등`);
+                    return;
+                }
             }
 
             try {
@@ -1458,7 +1505,17 @@
                     const changeClass = stock.change >= 0 ? 'text-red-500' : 'text-blue-500';
                     const sign = stock.change >= 0 ? '▲' : '▼';
 
-                    document.getElementById('stock-name').textContent = stock.name;
+                    // 종목명 찾기 (매핑 테이블에서 역검색)
+                    let displayName = stock.name;
+                    const code = stock.symbol.replace(/\.(KS|KQ)$/, '');
+                    for (const [name, stockCode] of Object.entries(this.stockMapping)) {
+                        if (stockCode === code) {
+                            displayName = name;
+                            break;
+                        }
+                    }
+
+                    document.getElementById('stock-name').textContent = displayName;
                     document.getElementById('stock-code').textContent = stock.symbol;
                     document.getElementById('stock-market').textContent = stock.market;
                     document.getElementById('stock-price').textContent = stock.price.toLocaleString() + '원';
