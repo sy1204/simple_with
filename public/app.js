@@ -856,7 +856,7 @@
         handleDragStart(e, id) {
             // 마우스 왼쪽 버튼만 허용
             if (e.button !== 0) return;
-            e.preventDefault(); // 텍스트 선택 방지
+            e.preventDefault(); // 드래그 핸들에서만 텍스트 선택 방지
 
             this.draggedItem = this.items.find(i => i.id === id);
             this.activeItemId = id;
@@ -953,32 +953,33 @@
                 const isActive = this.activeItemId === item.id;
 
                 return `
-                <div data-id="${item.id}" 
+                <div data-id="${item.id}"
                      class="flex items-center gap-2 py-1.5 group/item transition-all ${isActive ? 'bg-primary/5' : ''}"
-                     style="margin-left: ${marginLeft}px"
-                     onclick="window.Todo.select(${item.id})">
-                     
+                     style="margin-left: ${marginLeft}px">
+
                     <!-- 체크박스 (Google Keep 스타일) -->
-                    <button onclick="event.stopPropagation(); window.Todo.toggle(${item.id})" 
+                    <button onclick="event.stopPropagation(); window.Todo.toggle(${item.id}); window.Todo.select(${item.id});"
                             class="flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all
                                    ${item.done
                         ? 'bg-primary border-primary'
                         : 'border-slate-300 dark:border-slate-600 hover:border-primary'}">
                         ${item.done ? '<span class="material-symbols-outlined text-white text-sm">check</span>' : ''}
                     </button>
-                    
-                    <!-- 텍스트 -->
+
+                    <!-- 텍스트 (복사 가능) -->
                     <span class="flex-1 text-sm ${item.done
                         ? 'text-slate-400 line-through decoration-slate-400'
-                        : 'text-slate-700 dark:text-slate-200'} cursor-text select-text">${item.text}</span>
+                        : 'text-slate-700 dark:text-slate-200'} cursor-text select-text user-select-text"
+                          style="user-select: text; -webkit-user-select: text;">${item.text}</span>
                     
                     <!-- 드래그 & 삭제 (hover 시 표시) -->
                     <div class="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
                         <div class="cursor-grab text-slate-300 hover:text-slate-500 p-0.5"
-                             onmousedown="event.stopPropagation(); window.Todo.handleDragStart(event, ${item.id})">
+                             onmousedown="event.stopPropagation(); window.Todo.handleDragStart(event, ${item.id})"
+                             onclick="event.stopPropagation(); window.Todo.select(${item.id})">
                             <span class="material-symbols-outlined text-base">drag_indicator</span>
                         </div>
-                        <button onclick="event.stopPropagation(); window.Todo.remove(${item.id})" 
+                        <button onclick="event.stopPropagation(); window.Todo.remove(${item.id})"
                                 class="text-slate-300 hover:text-red-500 p-0.5">
                             <span class="material-symbols-outlined text-base">close</span>
                         </button>
@@ -1230,6 +1231,7 @@
         rateUnit: 'year',   // 'year' (연이율) or 'month' (월이율)
         periodUnit: 'year', // 'year' or 'month'
         stockData: null,    // 주식 데이터
+        currentStockSymbol: null, // 현재 조회 중인 종목 코드
 
         // 주요 종목 매핑 테이블 (종목명 → 종목코드) - 200개+
         stockMapping: {
@@ -1454,11 +1456,16 @@
                         <!-- 검색 결과 -->
                         <div id="stock-result" class="hidden bg-background-light dark:bg-[#111822] rounded-lg p-4 space-y-3">
                             <div class="flex justify-between items-start">
-                                <div>
+                                <div class="flex-1">
                                     <p id="stock-name" class="font-bold text-base"></p>
                                     <p id="stock-code" class="text-xs text-slate-400"></p>
                                 </div>
-                                <span id="stock-market" class="px-2 py-1 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-600"></span>
+                                <div class="flex items-center gap-2">
+                                    <button id="stock-refresh-btn" class="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" title="새로고침">
+                                        <span class="material-symbols-outlined text-lg text-slate-500">refresh</span>
+                                    </button>
+                                    <span id="stock-market" class="px-2 py-1 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-600"></span>
+                                </div>
                             </div>
                             <div class="border-t border-slate-200 dark:border-slate-700 pt-3 flex gap-4">
                                 <!-- 주가 정보 (클릭 가능) -->
@@ -1678,6 +1685,9 @@
 
                     const stockCode = stock.symbol.replace(/\.(KS|KQ)$/, '');
 
+                    // 현재 종목 코드 저장 (새로고침용)
+                    this.currentStockSymbol = stockCode;
+
                     document.getElementById('stock-name').textContent = stock.name;
                     document.getElementById('stock-code').textContent = stock.symbol;
                     document.getElementById('stock-market').textContent = stock.market;
@@ -1699,6 +1709,22 @@
                     }
 
                     resultDiv.classList.remove('hidden');
+
+                    // 새로고침 버튼 이벤트 (한 번만 등록)
+                    const refreshBtn = document.getElementById('stock-refresh-btn');
+                    if (refreshBtn && !refreshBtn.hasAttribute('data-listener')) {
+                        refreshBtn.setAttribute('data-listener', 'true');
+                        refreshBtn.addEventListener('click', () => {
+                            if (this.currentStockSymbol) {
+                                // 회전 애니메이션
+                                const icon = refreshBtn.querySelector('.material-symbols-outlined');
+                                icon.style.animation = 'spin 0.5s linear';
+                                setTimeout(() => { icon.style.animation = ''; }, 500);
+
+                                this.loadStockDetail(this.currentStockSymbol);
+                            }
+                        });
+                    }
                 } else {
                     alert(result.error || '종목을 찾을 수 없습니다');
                     resultDiv.classList.add('hidden');
@@ -1728,8 +1754,8 @@
             const maxPrice = Math.max(...prices);
             const priceRange = maxPrice - minPrice;
 
-            // 여백 설정
-            const padding = { top: 10, right: 10, bottom: 10, left: 10 };
+            // 여백 설정 (하단에 시간 레이블 공간 추가)
+            const padding = { top: 10, right: 10, bottom: 20, left: 10 };
             const chartWidth = width - padding.left - padding.right;
             const chartHeight = height - padding.top - padding.bottom;
 
@@ -1786,6 +1812,51 @@
             ctx.font = '9px sans-serif';
             ctx.fillText(maxPrice.toLocaleString(), padding.left + 2, padding.top + 10);
             ctx.fillText(minPrice.toLocaleString(), padding.left + 2, height - padding.bottom - 2);
+
+            // x축 시간 레이블 (30분 간격)
+            if (chartData.length > 0) {
+                ctx.fillStyle = textColor;
+                ctx.font = '8px sans-serif';
+                ctx.textAlign = 'center';
+
+                // 30분 = 1800초 = 1800000ms
+                const thirtyMinutes = 30 * 60 * 1000;
+
+                // 시작/종료 시간
+                const startTime = chartData[0].time * 1000; // Unix timestamp to ms
+                const endTime = chartData[chartData.length - 1].time * 1000;
+
+                // 첫 30분 단위 시점 찾기
+                const firstLabel = Math.ceil(startTime / thirtyMinutes) * thirtyMinutes;
+
+                // 30분 간격으로 레이블 추가
+                for (let t = firstLabel; t <= endTime; t += thirtyMinutes) {
+                    // 해당 시간에 가장 가까운 데이터 포인트 찾기
+                    const index = chartData.findIndex((d, i) => {
+                        const currentTime = d.time * 1000;
+                        const nextTime = chartData[i + 1] ? chartData[i + 1].time * 1000 : Infinity;
+                        return currentTime <= t && t < nextTime;
+                    });
+
+                    if (index !== -1) {
+                        const x = padding.left + (index / (chartData.length - 1)) * chartWidth;
+                        const timeStr = new Date(t).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+                        // 시간 레이블
+                        ctx.fillText(timeStr, x, height - 5);
+
+                        // 수직 눈금선 (옅게)
+                        ctx.strokeStyle = isDark ? '#1e293b' : '#f1f5f9';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(x, padding.top);
+                        ctx.lineTo(x, height - padding.bottom);
+                        ctx.stroke();
+                    }
+                }
+
+                ctx.textAlign = 'left'; // 원래대로 복원
+            }
         },
 
         // 여러 개 매칭된 종목 리스트 표시 (API 응답 기반)
@@ -2938,8 +3009,8 @@
                 this.data = this.parseCurrentWeather(currentData);
                 this.forecast = forecastData.error ? { hourly: [], daily: [] } : this.parseForecast(forecastData);
 
-                // 현재 데이터를 과거 기록에 저장
-                this.saveToHistory(this.data, loc.name);
+                // 현재 데이터를 과거 기록에 저장 (예보 데이터도 함께 전달)
+                this.saveToHistory(this.data, loc.name, this.forecast);
 
                 // 중기예보 파싱
                 if (midData.error) {
