@@ -2077,12 +2077,36 @@
             // 키보드 단축키
             editor.addEventListener('keydown', (e) => {
                 // Tab = 4칸 띄어쓰기
-                if (e.key === 'Tab') {
+                if (e.key === 'Tab' && !e.shiftKey) {
                     e.preventDefault();
-                    if (e.shiftKey) {
-                        // Shift+Tab: 들여쓰기 제거 (TODO: 구현 가능)
-                    } else {
-                        document.execCommand('insertText', false, '    ');
+                    document.execCommand('insertText', false, '    ');
+                    Storage.set('memoHtml', editor.innerHTML);
+                }
+
+                // Shift+Tab = 내어쓰기 (앞 4칸 제거)
+                if (e.key === 'Tab' && e.shiftKey) {
+                    e.preventDefault();
+                    const selection = window.getSelection();
+                    if (selection.rangeCount > 0) {
+                        const range = selection.getRangeAt(0);
+                        const node = range.startContainer;
+                        if (node.nodeType === Node.TEXT_NODE) {
+                            const text = node.textContent;
+                            const offset = range.startOffset;
+                            // 커서 앞의 공백 최대 4칸 제거
+                            let spacesToRemove = 0;
+                            for (let i = offset - 1; i >= 0 && i >= offset - 4; i--) {
+                                if (text[i] === ' ') spacesToRemove++;
+                                else break;
+                            }
+                            if (spacesToRemove > 0) {
+                                node.textContent = text.slice(0, offset - spacesToRemove) + text.slice(offset);
+                                range.setStart(node, offset - spacesToRemove);
+                                range.setEnd(node, offset - spacesToRemove);
+                                selection.removeAllRanges();
+                                selection.addRange(range);
+                            }
+                        }
                     }
                     Storage.set('memoHtml', editor.innerHTML);
                 }
@@ -2099,16 +2123,16 @@
                     this.toggleStrikethrough();
                 }
 
-                // Ctrl+Shift+2 = 글씨 크게
+                // Ctrl+Shift+2 = 글씨 작게
                 if (e.ctrlKey && e.shiftKey && e.key === '@') {
                     e.preventDefault();
-                    this.changeFontSize(1);
+                    this.changeFontSize(-1);
                 }
 
-                // Ctrl+Shift+3 = 글씨 작게
+                // Ctrl+Shift+3 = 글씨 크게
                 if (e.ctrlKey && e.shiftKey && e.key === '#') {
                     e.preventDefault();
-                    this.changeFontSize(-1);
+                    this.changeFontSize(1);
                 }
             });
 
@@ -2159,29 +2183,31 @@
             const range = selection.getRangeAt(0);
             if (range.collapsed) return;
 
-            // 선택된 텍스트를 span으로 감싸기
-            const span = document.createElement('span');
-            try {
-                range.surroundContents(span);
-            } catch (e) {
-                // 복잡한 선택의 경우 execCommand 사용
-                const currentSize = parseInt(window.getComputedStyle(range.startContainer.parentElement).fontSize);
+            // execCommand로 fontSize 적용 후 변환
+            document.execCommand('fontSize', false, '7');
+
+            const editor = document.getElementById('memo-text');
+            const fontElements = editor.querySelectorAll('font[size="7"]');
+
+            fontElements.forEach(el => {
+                // 기존 폰트 크기 확인
+                const parent = el.parentElement;
+                let currentSize = 14; // 기본 크기
+
+                if (el.style.fontSize) {
+                    currentSize = parseInt(el.style.fontSize);
+                } else if (parent && parent.style.fontSize) {
+                    currentSize = parseInt(parent.style.fontSize);
+                } else {
+                    currentSize = parseInt(window.getComputedStyle(el).fontSize);
+                }
+
                 const newSize = Math.max(10, Math.min(32, currentSize + delta * 2));
-                document.execCommand('fontSize', false, '7');
-                const fontElements = document.getElementById('memo-text').querySelectorAll('font[size="7"]');
-                fontElements.forEach(el => {
-                    el.removeAttribute('size');
-                    el.style.fontSize = newSize + 'px';
-                });
-                Storage.set('memoHtml', document.getElementById('memo-text').innerHTML);
-                return;
-            }
+                el.removeAttribute('size');
+                el.style.fontSize = newSize + 'px';
+            });
 
-            const currentSize = parseInt(window.getComputedStyle(span).fontSize);
-            const newSize = Math.max(10, Math.min(32, currentSize + delta * 2));
-            span.style.fontSize = newSize + 'px';
-
-            Storage.set('memoHtml', document.getElementById('memo-text').innerHTML);
+            Storage.set('memoHtml', editor.innerHTML);
         }
     };
 
