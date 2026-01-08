@@ -2088,15 +2088,27 @@
                 }
 
                 // Ctrl+B = 굵게
-                if (e.ctrlKey && e.key === 'b') {
+                if (e.ctrlKey && !e.shiftKey && e.key === 'b') {
                     e.preventDefault();
                     this.toggleBold();
                 }
 
-                // Ctrl+Shift+- = 취소선
-                if (e.ctrlKey && e.shiftKey && e.key === '-') {
+                // Alt+Shift+5 = 취소선 (Google Docs 표준)
+                if (e.altKey && e.shiftKey && e.key === '5') {
                     e.preventDefault();
                     this.toggleStrikethrough();
+                }
+
+                // Ctrl+Shift+. = 글씨 크게
+                if (e.ctrlKey && e.shiftKey && e.key === '.') {
+                    e.preventDefault();
+                    this.changeFontSize(1);
+                }
+
+                // Ctrl+Shift+, = 글씨 작게
+                if (e.ctrlKey && e.shiftKey && e.key === ',') {
+                    e.preventDefault();
+                    this.changeFontSize(-1);
                 }
             });
 
