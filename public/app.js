@@ -2055,82 +2055,121 @@
     // ===== 메모 =====
     const Memo = {
         init() {
-            const textarea = document.getElementById('memo-text');
-            textarea.value = Storage.get('memo', '');
+            const editor = document.getElementById('memo-text');
 
-            textarea.addEventListener('input', () => Storage.set('memo', textarea.value));
+            // 기존 텍스트 메모 마이그레이션
+            const oldMemo = Storage.get('memo', '');
+            let savedContent = Storage.get('memoHtml', '');
+            if (!savedContent && oldMemo) {
+                savedContent = oldMemo.replace(/\n/g, '<br>');
+                Storage.set('memoHtml', savedContent);
+            }
 
-            textarea.addEventListener('keydown', (e) => {
-                const { selectionStart, selectionEnd, value } = textarea;
-                const lines = value.substring(0, selectionStart).split('\n');
-                const currentLine = lines[lines.length - 1];
+            editor.innerHTML = savedContent;
+            this.updatePlaceholder(editor);
 
-                // 1. Enter 키 처리 (자동 리스트 생성)
-                if (e.key === 'Enter') {
-                    // 불렛 리스트 (*, -) 또는 숫자 리스트 (1.) 패턴 매칭
-                    const bulletMatch = currentLine.match(/^(\s*)([*-])\s(.*)/);
-                    const numberMatch = currentLine.match(/^(\s*)(\d+)\.\s(.*)/);
+            // 저장
+            editor.addEventListener('input', () => {
+                Storage.set('memoHtml', editor.innerHTML);
+                this.updatePlaceholder(editor);
+            });
 
-                    if (bulletMatch || numberMatch) {
-                        e.preventDefault();
-                        const indent = (bulletMatch ? bulletMatch[1] : numberMatch[1]);
-                        const content = (bulletMatch ? bulletMatch[3] : numberMatch[3]);
-
-                        // 현재 행에 내용이 없으면 리스트 종료
-                        if (!content.trim()) {
-                            const newText = value.substring(0, selectionStart - currentLine.length) + '\n' + value.substring(selectionEnd);
-                            textarea.value = newText;
-                            textarea.selectionStart = textarea.selectionEnd = selectionStart - currentLine.length + 1;
-                            return;
-                        }
-
-                        let nextPrefix = bulletMatch ? bulletMatch[2] : (parseInt(numberMatch[2]) + 1) + '.';
-                        const insertion = `\n${indent}${nextPrefix} `;
-
-                        textarea.value = value.substring(0, selectionStart) + insertion + value.substring(selectionEnd);
-                        textarea.selectionStart = textarea.selectionEnd = selectionStart + insertion.length;
-                        Storage.set('memo', textarea.value);
-                    }
-                }
-
-                // 2. Tab 키 처리 (위계 설정 - 2칸 들여쓰기)
+            // 키보드 단축키
+            editor.addEventListener('keydown', (e) => {
+                // Tab = 4칸 띄어쓰기
                 if (e.key === 'Tab') {
                     e.preventDefault();
-                    const isShift = e.shiftKey;
-
-                    // 여러 줄 선택 대응
-                    const before = value.substring(0, selectionStart);
-                    const after = value.substring(selectionEnd);
-                    const startOfLine = before.lastIndexOf('\n') + 1;
-                    const endOfLine = selectionEnd + (after.indexOf('\n') !== -1 ? after.indexOf('\n') : after.length);
-
-                    const selection = value.substring(startOfLine, endOfLine);
-                    const selectedLines = selection.split('\n');
-
-                    const newLines = selectedLines.map(line => {
-                        if (isShift) {
-                            // 앞의 공백 2칸 제거 (또는 탭 1개 제거)
-                            return line.startsWith('  ') ? line.substring(2) : (line.startsWith('\t') ? line.substring(1) : line);
-                        } else {
-                            // 공백 2칸 추가
-                            return '  ' + line;
-                        }
-                    });
-
-                    const newContent = newLines.join('\n');
-                    textarea.value = value.substring(0, startOfLine) + newContent + value.substring(endOfLine);
-
-                    // 포커스 유지 및 선택 영역 복구
-                    if (selectionStart === selectionEnd) {
-                        const diff = newLines[0].length - selectedLines[0].length;
-                        textarea.selectionStart = textarea.selectionEnd = Math.max(startOfLine, selectionStart + diff);
+                    if (e.shiftKey) {
+                        // Shift+Tab: 들여쓰기 제거 (TODO: 구현 가능)
                     } else {
-                        textarea.selectionStart = startOfLine;
-                        textarea.selectionEnd = startOfLine + newContent.length;
+                        document.execCommand('insertText', false, '    ');
                     }
-                    Storage.set('memo', textarea.value);
+                    Storage.set('memoHtml', editor.innerHTML);
+                }
+
+                // Ctrl+B = 굵게
+                if (e.ctrlKey && e.key === 'b') {
+                    e.preventDefault();
+                    this.toggleBold();
+                }
+
+                // Ctrl+Shift+- = 취소선
+                if (e.ctrlKey && e.shiftKey && e.key === '-') {
+                    e.preventDefault();
+                    this.toggleStrikethrough();
                 }
             });
+
+            // 버튼 이벤트
+            document.getElementById('memo-bold')?.addEventListener('click', () => {
+                this.toggleBold();
+                editor.focus();
+            });
+
+            document.getElementById('memo-strike')?.addEventListener('click', () => {
+                this.toggleStrikethrough();
+                editor.focus();
+            });
+
+            document.getElementById('memo-size-up')?.addEventListener('click', () => {
+                this.changeFontSize(1);
+                editor.focus();
+            });
+
+            document.getElementById('memo-size-down')?.addEventListener('click', () => {
+                this.changeFontSize(-1);
+                editor.focus();
+            });
+        },
+
+        updatePlaceholder(editor) {
+            if (!editor.textContent.trim() && !editor.querySelector('img')) {
+                editor.classList.add('empty');
+            } else {
+                editor.classList.remove('empty');
+            }
+        },
+
+        toggleBold() {
+            document.execCommand('bold', false, null);
+            Storage.set('memoHtml', document.getElementById('memo-text').innerHTML);
+        },
+
+        toggleStrikethrough() {
+            document.execCommand('strikeThrough', false, null);
+            Storage.set('memoHtml', document.getElementById('memo-text').innerHTML);
+        },
+
+        changeFontSize(delta) {
+            const selection = window.getSelection();
+            if (!selection.rangeCount) return;
+
+            const range = selection.getRangeAt(0);
+            if (range.collapsed) return;
+
+            // 선택된 텍스트를 span으로 감싸기
+            const span = document.createElement('span');
+            try {
+                range.surroundContents(span);
+            } catch (e) {
+                // 복잡한 선택의 경우 execCommand 사용
+                const currentSize = parseInt(window.getComputedStyle(range.startContainer.parentElement).fontSize);
+                const newSize = Math.max(10, Math.min(32, currentSize + delta * 2));
+                document.execCommand('fontSize', false, '7');
+                const fontElements = document.getElementById('memo-text').querySelectorAll('font[size="7"]');
+                fontElements.forEach(el => {
+                    el.removeAttribute('size');
+                    el.style.fontSize = newSize + 'px';
+                });
+                Storage.set('memoHtml', document.getElementById('memo-text').innerHTML);
+                return;
+            }
+
+            const currentSize = parseInt(window.getComputedStyle(span).fontSize);
+            const newSize = Math.max(10, Math.min(32, currentSize + delta * 2));
+            span.style.fontSize = newSize + 'px';
+
+            Storage.set('memoHtml', document.getElementById('memo-text').innerHTML);
         }
     };
 
