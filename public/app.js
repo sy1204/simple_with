@@ -2093,20 +2093,20 @@
                     this.toggleBold();
                 }
 
-                // Alt+Shift+5 = 취소선 (Google Docs 표준)
-                if (e.altKey && e.shiftKey && e.key === '5') {
+                // Ctrl+Shift+1 = 취소선
+                if (e.ctrlKey && e.shiftKey && e.key === '!') {
                     e.preventDefault();
                     this.toggleStrikethrough();
                 }
 
-                // Ctrl+Shift+. = 글씨 크게
-                if (e.ctrlKey && e.shiftKey && e.key === '.') {
+                // Ctrl+Shift+2 = 글씨 크게
+                if (e.ctrlKey && e.shiftKey && e.key === '@') {
                     e.preventDefault();
                     this.changeFontSize(1);
                 }
 
-                // Ctrl+Shift+, = 글씨 작게
-                if (e.ctrlKey && e.shiftKey && e.key === ',') {
+                // Ctrl+Shift+3 = 글씨 작게
+                if (e.ctrlKey && e.shiftKey && e.key === '#') {
                     e.preventDefault();
                     this.changeFontSize(-1);
                 }
