@@ -2183,31 +2183,31 @@
             const range = selection.getRangeAt(0);
             if (range.collapsed) return;
 
-            // execCommand로 fontSize 적용 후 변환
-            document.execCommand('fontSize', false, '7');
+            // 선택 영역의 현재 폰트 크기 먼저 확인
+            const tempSpan = document.createElement('span');
+            const clonedRange = range.cloneRange();
+            clonedRange.collapse(true);
+            clonedRange.insertNode(tempSpan);
+            const currentSize = parseInt(window.getComputedStyle(tempSpan).fontSize) || 14;
+            tempSpan.remove();
 
-            const editor = document.getElementById('memo-text');
-            const fontElements = editor.querySelectorAll('font[size="7"]');
+            // 새 크기 계산
+            const newSize = Math.max(10, Math.min(32, currentSize + delta * 2));
 
-            fontElements.forEach(el => {
-                // 기존 폰트 크기 확인
-                const parent = el.parentElement;
-                let currentSize = 14; // 기본 크기
+            // 선택 영역을 span으로 감싸기
+            const selectedText = range.extractContents();
+            const wrapper = document.createElement('span');
+            wrapper.style.fontSize = newSize + 'px';
+            wrapper.appendChild(selectedText);
+            range.insertNode(wrapper);
 
-                if (el.style.fontSize) {
-                    currentSize = parseInt(el.style.fontSize);
-                } else if (parent && parent.style.fontSize) {
-                    currentSize = parseInt(parent.style.fontSize);
-                } else {
-                    currentSize = parseInt(window.getComputedStyle(el).fontSize);
-                }
+            // 선택 영역 복원
+            selection.removeAllRanges();
+            const newRange = document.createRange();
+            newRange.selectNodeContents(wrapper);
+            selection.addRange(newRange);
 
-                const newSize = Math.max(10, Math.min(32, currentSize + delta * 2));
-                el.removeAttribute('size');
-                el.style.fontSize = newSize + 'px';
-            });
-
-            Storage.set('memoHtml', editor.innerHTML);
+            Storage.set('memoHtml', document.getElementById('memo-text').innerHTML);
         }
     };
 
