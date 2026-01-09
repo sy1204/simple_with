@@ -2135,6 +2135,13 @@
                     this.changeFontSize(1);
                 }
             });
+            // 붙여넣기 시 서식 제거하고 텍스트만 입력
+            editor.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+                document.execCommand('insertText', false, text);
+                Storage.set('memoHtml', editor.innerHTML);
+            });
 
             // 버튼 이벤트
             document.getElementById('memo-bold')?.addEventListener('click', () => {
